@@ -20,6 +20,9 @@ import {
   Sparkles,
   Info,
   AlertCircle,
+  Share2,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 interface PublicMenuPageProps {
@@ -62,6 +65,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [orderSuccessId, setOrderSuccessId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copiedShareToast, setCopiedShareToast] = useState<boolean>(false);
 
   useEffect(() => {
     if (tableToken) {
@@ -224,6 +228,37 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                 <Phone className="w-3.5 h-3.5" />
                 <span>{establishment.phone}</span>
               </span>
+              <span>•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const shareUrl = window.location.origin + (table ? `/?mesa=${table.table_number}` : '/?view=cardapio');
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `${establishment.name} - Cardápio Digital`,
+                      text: 'Acesse nosso cardápio de espetinhos e bebidas!',
+                      url: shareUrl,
+                    }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(shareUrl);
+                    setCopiedShareToast(true);
+                    setTimeout(() => setCopiedShareToast(false), 2500);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white text-[11px] font-bold transition shadow-sm"
+              >
+                {copiedShareToast ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-300">Link Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Compartilhar Cardápio</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

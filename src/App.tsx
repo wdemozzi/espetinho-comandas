@@ -39,6 +39,20 @@ function AppContent() {
         return;
       }
 
+      // Check if user requested the direct digital menu / bio link (exact same menu as QR code)
+      const isCardapioBio =
+        view === 'cardapio' ||
+        view === 'menu' ||
+        params.has('cardapio') ||
+        pathname === '/cardapio' ||
+        pathname === '/menu';
+
+      if (isCardapioBio) {
+        setTableToken(null);
+        setCurrentView('cardapio_bio');
+        return;
+      }
+
       const isStaffRoute =
         view === 'sistema' ||
         view === 'operacao' ||
@@ -94,8 +108,8 @@ function AppContent() {
     setCurrentView('landing');
   };
 
-  // 1. Table QR Code Customer Session (Pure table ordering, zero operational access)
-  if (currentView === 'cardapio_mesa' && tableToken) {
+  // 1. Digital Menu Customer Session (Either Table QR or Instagram Bio / Shared link)
+  if ((currentView === 'cardapio_mesa' && tableToken) || currentView === 'cardapio_bio') {
     return (
       <div className="min-h-screen bg-[#0c0a17] text-gray-100 flex flex-col font-sans">
         <main className="flex-1 w-full mx-auto p-0 max-w-full">

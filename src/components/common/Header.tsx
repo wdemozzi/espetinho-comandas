@@ -13,6 +13,9 @@ import {
   UserCheck,
   LogOut,
   BellRing,
+  Copy,
+  Check,
+  Share2,
 } from 'lucide-react';
 import { soundService } from '../../lib/sound';
 import { db } from '../../lib/databaseStore';
@@ -32,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLockO
   const [isExpeditionOpen, setIsExpeditionOpen] = useState<boolean>(false);
   const [readyCount, setReadyCount] = useState<number>(() => db.getReadyOrders().length);
   const [pendingRestrictedView, setPendingRestrictedView] = useState<string | null>(null);
+  const [copiedBioToast, setCopiedBioToast] = useState<boolean>(false);
 
   useEffect(() => {
     return db.subscribe(() => {
@@ -163,15 +167,35 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLockO
             </button>
 
             {/* Public Catalog Link (Opens in new tab exactly as customer sees it) */}
-            <button
-              onClick={() => window.open('/?view=cardapio', '_blank')}
-              title="Abrir Cardápio Digital em Nova Aba (Visualização do Cliente)"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 text-purple-300 border border-purple-800/60 text-xs font-semibold whitespace-nowrap transition"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Cardápio Bio</span>
-              <ExternalLink className="w-3 h-3 opacity-70" />
-            </button>
+            <div className="hidden lg:flex items-center">
+              <button
+                type="button"
+                onClick={() => window.open('/?view=cardapio', '_blank')}
+                title="Abrir Cardápio Digital em Nova Aba (Visualização do Cliente)"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-l-xl bg-purple-950/50 hover:bg-purple-900/60 text-purple-300 border border-purple-800/60 text-xs font-semibold whitespace-nowrap transition"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Cardápio Bio</span>
+                <ExternalLink className="w-3 h-3 opacity-70" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `${window.location.origin}/?view=cardapio`;
+                  navigator.clipboard.writeText(url);
+                  setCopiedBioToast(true);
+                  setTimeout(() => setCopiedBioToast(false), 2500);
+                }}
+                title="Copiar Link do Cardápio para Bio do Instagram ou WhatsApp"
+                className="px-2 py-1.5 rounded-r-xl bg-purple-950/70 hover:bg-purple-900/80 text-purple-300 border-y border-r border-purple-800/60 text-xs font-bold transition flex items-center justify-center"
+              >
+                {copiedBioToast ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
+                )}
+              </button>
+            </div>
 
             {/* PROTECTED OPERATOR BADGE (PIN locked, clean badge) */}
             <button
