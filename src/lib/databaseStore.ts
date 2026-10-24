@@ -13,6 +13,7 @@ import {
   OrderStatus,
   PaymentMethod,
   SplitMode,
+  ProductionSector,
 } from '../types/database.types';
 import { splitBillEqual, validateCustomSplit } from './currency';
 import { soundService } from './sound';
@@ -707,6 +708,36 @@ class DatabaseStore {
         return;
       }
     }
+  }
+
+  public updateEntireOrderStatus(orderId: string, newStatus: OrderStatus, sector?: ProductionSector | 'all') {
+    const order = this.orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    for (const item of order.items) {
+      if (!sector || sector === 'all' || item.sector === sector) {
+        item.status = newStatus;
+        if (newStatus === 'ready') item.prepared_at = new Date().toISOString();
+        if (newStatus === 'delivered') item.delivered_at = new Date().toISOString();
+      }
+    }
+
+    if (newStatus === 'ready') {
+      soundService.playOrderReady();
+    } else if (newStatus === 'preparing' || newStatus === 'delivered') {
+      soundService.playSuccessDing();
+    }
+
+    const allDelivered = order.items.every((i) => i.status === 'delivered');
+    const allReady = order.items.every((i) => i.status === 'ready' || i.status === 'delivered');
+    const anyPreparing = order.items.some((i) => i.status === 'preparing');
+
+    if (allDelivered) order.status = 'delivered';
+    else if (allReady) order.status = 'ready';
+    else if (anyPreparing) order.status = 'preparing';
+    else order.status = newStatus;
+
+    this.notify();
   }
 
   // --- ACTIONS: BILL SPLITS (DIVIDIR CONTA) ---

@@ -38,9 +38,20 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, activeSectorFilter 
 
   if (displayedItems.length === 0) return null;
 
-  const handleUpdateItemStatus = (itemId: string, status: OrderStatus) => {
-    db.updateOrderItemStatus(itemId, status);
+  // Toggle item readiness with a simple tap
+  const handleToggleItemReady = (item: OrderItem) => {
+    const nextStatus: OrderStatus = item.status === 'ready' ? 'preparing' : 'ready';
+    db.updateOrderItemStatus(item.id, nextStatus);
   };
+
+  // Batch update for the entire ticket
+  const handleBatchUpdate = (newStatus: OrderStatus) => {
+    db.updateEntireOrderStatus(order.id, newStatus, activeSectorFilter);
+  };
+
+  const isAllReady = displayedItems.every((i) => i.status === 'ready' || i.status === 'delivered');
+  const isAnyPreparing = displayedItems.some((i) => i.status === 'preparing');
+  const isAllDelivered = displayedItems.every((i) => i.status === 'delivered');
 
   // Urgency styling based on wait time
   const isUrgent = elapsedMinutes >= 20;
@@ -48,172 +59,196 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, activeSectorFilter 
 
   return (
     <div
-      className={`rounded-2xl border transition-all shadow-lg overflow-hidden flex flex-col justify-between ${
-        isUrgent
-          ? 'bg-charcoal-900 border-red-600/80 shadow-red-950/20'
+      className={`rounded-2xl border transition-all shadow-xl overflow-hidden flex flex-col justify-between ${
+        isAllDelivered
+          ? 'bg-charcoal-900 border-gray-800 opacity-60'
+          : isAllReady
+          ? 'bg-charcoal-900 border-emerald-500 shadow-emerald-950/20'
+          : isUrgent
+          ? 'bg-charcoal-900 border-red-500 shadow-red-950/30'
           : isWarning
-          ? 'bg-charcoal-900 border-amber-600/80 shadow-amber-950/20'
-          : 'bg-charcoal-900 border-gray-700 shadow-black/40'
+          ? 'bg-charcoal-900 border-amber-500 shadow-amber-950/20'
+          : 'bg-charcoal-900 border-gray-700'
       }`}
     >
-      {/* Top Banner */}
+      {/* Ticket Header */}
       <div
         className={`px-4 py-3 border-b flex items-center justify-between ${
-          isUrgent
-            ? 'bg-red-950/60 border-red-800 text-red-200'
+          isAllReady
+            ? 'bg-emerald-950/70 border-emerald-800/80 text-emerald-200'
+            : isUrgent
+            ? 'bg-red-950/70 border-red-800 text-red-200'
             : isWarning
-            ? 'bg-amber-950/60 border-amber-800 text-amber-200'
+            ? 'bg-amber-950/70 border-amber-800 text-amber-200'
             : 'bg-charcoal-850 border-gray-800 text-gray-200'
         }`}
       >
-        <div className="flex items-center gap-2">
-          <span className="font-mono font-black text-lg text-white">
-            #{order.order_number}
-          </span>
-          <span className="px-2 py-0.5 rounded-md bg-gray-800 text-xs font-bold text-gray-200">
+        <div className="flex items-center gap-2.5">
+          <span className="font-black text-base sm:text-lg text-white">
             {order.table_number ? `Mesa ${String(order.table_number).padStart(2, '0')}` : order.order_type.toUpperCase()}
           </span>
+          <span className="px-2 py-0.5 rounded-md bg-black/40 text-xs font-mono font-bold text-gray-300">
+            #{order.order_number}
+          </span>
           {order.customer_name && (
-            <span className="text-xs text-gray-300 truncate max-w-[120px]">
-              {order.customer_name}
+            <span className="text-xs text-gray-400 truncate max-w-[100px] hidden sm:inline">
+              ({order.customer_name.split(' ')[0]})
             </span>
           )}
         </div>
 
-        {/* Elapsed Timer */}
-        <div
-          className={`flex items-center gap-1 font-mono text-xs font-bold px-2.5 py-1 rounded-full border ${
-            isUrgent
-              ? 'bg-red-900/60 text-red-300 border-red-700 animate-pulse'
-              : isWarning
-              ? 'bg-amber-900/60 text-amber-300 border-amber-700'
-              : 'bg-gray-800 text-gray-300 border-gray-700'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5" />
-          <span>{elapsedMinutes} min</span>
+        {/* Elapsed Timer & Overall Status */}
+        <div className="flex items-center gap-2">
+          {isAllReady ? (
+            <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-900/80 text-emerald-300 border border-emerald-600 animate-pulse">
+              PRONTO
+            </span>
+          ) : isAnyPreparing ? (
+            <span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-900/60 text-amber-300 border border-amber-700 flex items-center gap-1">
+              <Flame className="w-3 h-3 text-amber-400 animate-pulse" />
+              <span>PREPARANDO</span>
+            </span>
+          ) : (
+            <span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded-full bg-charcoal-800 text-gray-400 border border-gray-700">
+              NA FILA
+            </span>
+          )}
+
+          <div
+            className={`flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded-lg border ${
+              isUrgent
+                ? 'bg-red-900/80 text-red-200 border-red-700'
+                : 'bg-charcoal-800 text-gray-300 border-gray-700'
+            }`}
+          >
+            <Clock className="w-3 h-3" />
+            <span>{elapsedMinutes}m</span>
+          </div>
         </div>
       </div>
 
-      {/* Items list */}
-      <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[360px]">
+      {/* Clean Items Ticket Body (No repetitive giant buttons) */}
+      <div className="p-3.5 space-y-2 flex-1 overflow-y-auto">
+        <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider px-1">
+          Toque no item para marcar individualmente:
+        </p>
+
         {displayedItems.map((item: OrderItem) => {
-          const isItemReady = item.status === 'ready';
-          const isItemPreparing = item.status === 'preparing';
-          const isItemDelivered = item.status === 'delivered';
+          const isItemReady = item.status === 'ready' || item.status === 'delivered';
 
           return (
             <div
               key={item.id}
-              className={`p-3 rounded-xl border transition ${
-                isItemDelivered
-                  ? 'bg-gray-900/40 border-gray-800 opacity-60'
-                  : isItemReady
-                  ? 'bg-emerald-950/30 border-emerald-600/70 shadow-sm'
-                  : isItemPreparing
-                  ? 'bg-amber-950/20 border-amber-600/60'
-                  : 'bg-charcoal-800/90 border-gray-700/80'
+              onClick={() => handleToggleItemReady(item)}
+              className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between gap-3 ${
+                isItemReady
+                  ? 'bg-emerald-950/20 border-emerald-800/60 opacity-80'
+                  : 'bg-charcoal-800/90 border-gray-700 hover:border-ember-500/60'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-2">
-                  <span className="w-7 h-7 rounded-lg bg-charcoal-900 border border-gray-700 text-ember-400 font-mono font-extrabold text-sm flex items-center justify-center flex-shrink-0">
-                    {item.quantity}x
-                  </span>
-                  <div>
-                    <p className="font-bold text-sm text-white leading-tight">
-                      {item.product_name}
-                    </p>
-                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                      <SectorBadge sector={item.sector} />
-                      {item.addons_snapshot?.map((add, i) => (
-                        <span
-                          key={i}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700"
-                        >
-                          {add.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+              <div className="flex items-start gap-2.5 flex-1">
+                <span
+                  className={`w-7 h-7 rounded-lg font-mono font-black text-sm flex items-center justify-center flex-shrink-0 ${
+                    isItemReady
+                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                      : 'bg-charcoal-900 text-ember-400 border border-gray-700'
+                  }`}
+                >
+                  {item.quantity}x
+                </span>
 
-                {/* Status indicator badge */}
-                <div>
-                  {isItemDelivered ? (
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Entregue</span>
-                  ) : isItemReady ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-700 px-2 py-0.5 rounded-full animate-bounce">
-                      <Check className="w-3 h-3" />
-                      <span>PRONTO</span>
-                    </span>
-                  ) : isItemPreparing ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-950/80 border border-amber-700 px-2 py-0.5 rounded-full">
-                      <Flame className="w-3 h-3 animate-spin" />
-                      <span>PREPARANDO</span>
-                    </span>
-                  ) : (
-                    <span className="text-[11px] font-bold text-gray-400 bg-gray-800 border border-gray-700 px-2 py-0.5 rounded-full">
-                      NA FILA
-                    </span>
-                  )}
+                <div className="space-y-0.5">
+                  <p
+                    className={`font-bold text-sm leading-snug ${
+                      isItemReady ? 'line-through text-gray-400' : 'text-white'
+                    }`}
+                  >
+                    {item.product_name}
+                  </p>
+
+                  {/* Addons and Notes in one clean row */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <SectorBadge sector={item.sector} />
+                    {item.addons_snapshot?.map((add, i) => (
+                      <span
+                        key={i}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-charcoal-900 text-amber-300 border border-amber-900/60 font-medium"
+                      >
+                        {add.name}
+                      </span>
+                    ))}
+                    {item.notes && (
+                      <span className="text-[10px] text-amber-400 italic">
+                        Obs: {item.notes}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Notes */}
-              {item.notes && (
-                <div className="mt-2 p-1.5 rounded bg-charcoal-900 border border-gray-700/80 text-xs text-amber-300 flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="font-medium italic">Obs: {item.notes}</span>
-                </div>
-              )}
-
-              {/* Action Buttons for Kitchen */}
-              <div className="mt-3 pt-2 border-t border-gray-700/50 flex items-center justify-end gap-2">
-                {item.status === 'received' && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateItemStatus(item.id, 'preparing')}
-                    className="py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition"
-                  >
-                    <ChefHat className="w-3.5 h-3.5" />
-                    <span>Iniciar Preparo</span>
-                  </button>
-                )}
-
-                {item.status === 'preparing' && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateItemStatus(item.id, 'ready')}
-                    className="py-1.5 px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition animate-pulse"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Marcar como Pronto!</span>
-                  </button>
-                )}
-
-                {item.status === 'ready' && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateItemStatus(item.id, 'delivered')}
-                    className="py-1.5 px-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold text-xs flex items-center gap-1.5 transition"
-                  >
-                    <Truck className="w-3.5 h-3.5" />
-                    <span>Confirmar Entrega</span>
-                  </button>
-                )}
+              {/* Simple Check Indicator */}
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center border flex-shrink-0 transition ${
+                  isItemReady
+                    ? 'bg-emerald-600 border-emerald-500 text-white'
+                    : 'bg-charcoal-900 border-gray-700 text-transparent hover:border-gray-500'
+                }`}
+              >
+                <Check className="w-3.5 h-3.5" />
               </div>
             </div>
           );
         })}
+
+        {order.general_notes && (
+          <div className="p-2 rounded-lg bg-charcoal-850 border border-gray-800 text-[11px] text-amber-300 italic flex items-center gap-1.5 mt-2">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Nota do pedido: {order.general_notes}</span>
+          </div>
+        )}
       </div>
 
-      {/* General order notes or info */}
-      {order.general_notes && (
-        <div className="px-4 py-2 bg-charcoal-850/90 border-t border-gray-800 text-xs text-gray-400">
-          <strong className="text-gray-300">Nota geral:</strong> {order.general_notes}
-        </div>
-      )}
+      {/* SINGLE SOLID ACTION BUTTON PER TICKET */}
+      <div className="p-3 bg-charcoal-850 border-t border-gray-800 flex-shrink-0">
+        {!isAnyPreparing && !isAllReady && !isAllDelivered && (
+          <button
+            type="button"
+            onClick={() => handleBatchUpdate('preparing')}
+            className="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 transition"
+          >
+            <ChefHat className="w-4 h-4" />
+            <span>Iniciar Preparo deste Pedido</span>
+          </button>
+        )}
+
+        {isAnyPreparing && !isAllReady && !isAllDelivered && (
+          <button
+            type="button"
+            onClick={() => handleBatchUpdate('ready')}
+            className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2 transition animate-pulse"
+          >
+            <CheckCircle2 className="w-5 h-5" />
+            <span>Marcar Pedido Pronto!</span>
+          </button>
+        )}
+
+        {isAllReady && !isAllDelivered && (
+          <button
+            type="button"
+            onClick={() => handleBatchUpdate('delivered')}
+            className="w-full py-3 px-4 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition"
+          >
+            <Truck className="w-4 h-4 text-emerald-400" />
+            <span>Confirmar Entrega ao Garçom</span>
+          </button>
+        )}
+
+        {isAllDelivered && (
+          <div className="text-center py-1 text-xs font-bold text-gray-500 uppercase tracking-wider">
+            Pedido Entregue
+          </div>
+        )}
+      </div>
     </div>
   );
 };
