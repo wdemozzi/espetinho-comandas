@@ -19,6 +19,9 @@ export default defineConfig(({ mode }) => {
     .replace(/\/rest\/v1\/?$/i, '')
     .replace(/\/+$/, '') || 'https://ogldhoxfbjhgvwpjocoj.supabase.co';
 
+  const defaultKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nbGRob3hmYmpoZ3Z3cGpvY29qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NjA2MzUsImV4cCI6MjEwODQzNjYzNX0.y0SC-PYdh0pXgAkmnjWS_GaOWbCdpgkhMTFlWgqbdGs';
+
   const rawKey =
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY ||
@@ -27,9 +30,10 @@ export default defineConfig(({ mode }) => {
     process.env.ANON_KEY ||
     env.VITE_SUPABASE_ANON_KEY ||
     env.SUPABASE_ANON_KEY ||
-    '';
+    defaultKey;
 
-  const supabaseAnonKey = rawKey.trim().replace(/^["']|["']$/g, '').trim();
+  const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '').trim();
+  const supabaseAnonKey = (cleanKey && cleanKey !== 'SEU_ANON_KEY_AQUI') ? cleanKey : defaultKey;
 
   return {
     plugins: [react()],

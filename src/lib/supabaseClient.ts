@@ -22,6 +22,8 @@ const getStoredKey = (): string => {
 };
 
 export const DEFAULT_SUPABASE_URL = 'https://ogldhoxfbjhgvwpjocoj.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nbGRob3hmYmpoZ3Z3cGpvY29qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NjA2MzUsImV4cCI6MjEwODQzNjYzNX0.y0SC-PYdh0pXgAkmnjWS_GaOWbCdpgkhMTFlWgqbdGs';
 
 export const getSupabaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
@@ -36,7 +38,9 @@ export const getSupabaseAnonKey = (): string => {
   if (envKey && envKey !== 'SEU_ANON_KEY_AQUI' && envKey !== 'your-anon-key-here') {
     return envKey.trim().replace(/^["']|["']$/g, '').trim();
   }
-  return getStoredKey().trim().replace(/^["']|["']$/g, '').trim();
+  const storedKey = getStoredKey().trim().replace(/^["']|["']$/g, '').trim();
+  if (storedKey) return storedKey;
+  return DEFAULT_SUPABASE_ANON_KEY;
 };
 
 export const isSupabaseConfigured = (): boolean => {
