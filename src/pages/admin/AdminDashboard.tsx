@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../../lib/databaseStore';
-import { Product, RestaurantTable, ProductionSector } from '../../types/database.types';
+import { Product, RestaurantTable, ProductionSector, Profile } from '../../types/database.types';
 import { formatBRL, parseBRLToCents } from '../../lib/currency';
 import { SectorBadge, TableStatusBadge } from '../../components/common/Badge';
 import { QrCodeModal } from '../../components/common/QrCodeModal';
@@ -20,6 +21,8 @@ import {
   Utensils,
   CheckCircle2,
   X,
+  KeyRound,
+  Lock,
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -27,7 +30,7 @@ export const AdminDashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(db.getProducts());
   const [tables, setTables] = useState<RestaurantTable[]>(db.getTables());
   const categories = db.getCategories();
-  const profiles = db.getProfiles();
+  const [profiles, setProfiles] = useState<Profile[]>(db.getProfiles());
   const tabs = db.getTabs();
   const orders = db.getOrders();
 
@@ -42,6 +45,7 @@ export const AdminDashboard: React.FC = () => {
   const [newTableCapacity, setNewTableCapacity] = useState<number>(4);
 
   const [isUserModalOpen, setIsUserModalOpen] = useState<boolean>(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [newUserName, setNewUserName] = useState<string>('');
   const [newUserRole, setNewUserRole] = useState<'garcom' | 'cozinha' | 'caixa' | 'admin'>('garcom');
   const [newUserPhone, setNewUserPhone] = useState<string>('');
@@ -51,6 +55,7 @@ export const AdminDashboard: React.FC = () => {
     return db.subscribe(() => {
       setProducts(db.getProducts());
       setTables(db.getTables());
+      setProfiles(db.getProfiles());
     });
   }, []);
 
@@ -111,16 +116,36 @@ export const AdminDashboard: React.FC = () => {
     setNewTableCapacity(4);
   };
 
+  const handleOpenNewUser = () => {
+    setEditingUserId(null);
+    setNewUserName('');
+    setNewUserRole('garcom');
+    setNewUserPhone('');
+    setNewUserPin('1234');
+    setIsUserModalOpen(true);
+  };
+
+  const handleOpenEditUser = (profile: Profile) => {
+    setEditingUserId(profile.id);
+    setNewUserName(profile.full_name);
+    setNewUserRole(profile.role);
+    setNewUserPhone(profile.phone || '');
+    setNewUserPin(profile.pin_code);
+    setIsUserModalOpen(true);
+  };
+
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim()) return;
     db.saveProfile({
+      id: editingUserId || undefined,
       full_name: newUserName,
       role: newUserRole,
       phone: newUserPhone || null,
       pin_code: newUserPin || '1234',
     });
     setIsUserModalOpen(false);
+    setEditingUserId(null);
     setNewUserName('');
     setNewUserPhone('');
     setNewUserPin('1234');
@@ -376,29 +401,43 @@ export const AdminDashboard: React.FC = () => {
             </h3>
             <button
               type="button"
-              onClick={() => setIsUserModalOpen(true)}
-              className="py-2 px-3.5 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-ember-600/20 transition"
+              onClick={handleOpenNewUser}
+              className="py-2 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition"
             >
               <Plus className="w-4 h-4" />
               <span>Novo Funcionário / Garçom</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {profiles.map((p) => (
-              <div key={p.id} className="p-4 rounded-2xl bg-charcoal-850 border border-gray-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-sm">{p.full_name}</span>
-                  <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-charcoal-800 text-ember-400 border border-gray-700">
-                    {p.role}
-                  </span>
+              <div key={p.id} className="p-4 rounded-2xl bg-charcoal-850 border border-gray-800 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-sm">{p.full_name}</span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-charcoal-800 text-purple-400 border border-gray-700">
+                      {p.role}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Tel: {p.phone || 'Não informado'}</p>
                 </div>
-                <p className="text-xs text-gray-400">Tel: {p.phone || 'Não informado'}</p>
-                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800">
-                  <span className="text-gray-400">PIN de Acesso:</span>
-                  <span className="font-mono font-bold text-amber-400 bg-charcoal-900 px-2 py-0.5 rounded border border-gray-700">
-                    {p.pin_code}
-                  </span>
+
+                <div className="pt-2 border-t border-gray-800 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400">PIN:</span>
+                    <span className="font-mono font-bold text-amber-400 bg-charcoal-900 px-2 py-0.5 rounded border border-gray-700 text-xs">
+                      {p.pin_code}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditUser(p)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-charcoal-800 hover:bg-gray-700 text-purple-300 font-bold text-xs border border-gray-700 transition"
+                  >
+                    <Edit2 className="w-3 h-3 text-purple-400" />
+                    <span>Editar PIN</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -564,21 +603,36 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Staff / User Create Modal */}
-      {isUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-charcoal-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Cadastrar Funcionário / Garçom</h3>
+      {/* Staff / User Create & PIN Edit Modal */}
+      {isUserModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-sm bg-charcoal-900 border border-purple-500/50 rounded-2xl p-6 shadow-2xl space-y-4 my-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    {editingUserId ? 'Alterar PIN / Editar Perfil' : 'Cadastrar Funcionário'}
+                  </h3>
+                  <p className="text-[11px] text-gray-400">
+                    {editingUserId ? 'Defina a nova senha numérica' : 'Preencha os dados de acesso'}
+                  </p>
+                </div>
+              </div>
               <button
-                onClick={() => setIsUserModalOpen(false)}
-                className="text-gray-400 hover:text-white"
+                onClick={() => {
+                  setIsUserModalOpen(false);
+                  setEditingUserId(null);
+                }}
+                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveUser} className="space-y-3">
+            <form onSubmit={handleSaveUser} className="space-y-3.5">
               <div>
                 <label className="text-xs font-semibold text-gray-300 block mb-1">
                   Nome Completo:
@@ -589,17 +643,17 @@ export const AdminDashboard: React.FC = () => {
                   placeholder="Ex: Roberto Silva"
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
-                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-ember-500"
+                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="text-xs font-semibold text-gray-300 block mb-1">Função / Cargo:</label>
                   <select
                     value={newUserRole}
                     onChange={(e) => setNewUserRole(e.target.value as 'garcom' | 'cozinha' | 'caixa' | 'admin')}
-                    className="w-full px-2 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
+                    className="w-full px-2 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-purple-500"
                   >
                     <option value="garcom">Garçom</option>
                     <option value="cozinha">Cozinha</option>
@@ -609,15 +663,17 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">PIN (4 dígitos):</label>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">
+                    PIN (4 dígitos):
+                  </label>
                   <input
                     type="text"
                     required
                     maxLength={4}
                     placeholder="1234"
                     value={newUserPin}
-                    onChange={(e) => setNewUserPin(e.target.value)}
-                    className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white font-mono font-bold focus:outline-none focus:border-ember-500 text-center"
+                    onChange={(e) => setNewUserPin(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3 py-2 bg-charcoal-800 border border-amber-500/60 rounded-lg text-sm text-amber-300 font-mono font-black focus:outline-none focus:border-amber-400 text-center tracking-widest"
                   />
                 </div>
               </div>
@@ -629,28 +685,37 @@ export const AdminDashboard: React.FC = () => {
                   placeholder="(44) 99999-9999"
                   value={newUserPhone}
                   onChange={(e) => setNewUserPhone(e.target.value)}
-                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-ember-500"
+                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500"
                 />
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-purple-950/30 border border-purple-800/40 text-[11px] text-gray-400 flex items-start gap-2">
+                <Lock className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
+                <span>Esse PIN é utilizado para o funcionário se identificar e lançar comandas ou operar o sistema.</span>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsUserModalOpen(false)}
+                  onClick={() => {
+                    setIsUserModalOpen(false);
+                    setEditingUserId(null);
+                  }}
                   className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-ember-600 hover:bg-ember-500 text-white text-xs font-bold shadow-md shadow-ember-600/30"
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-600/30"
                 >
-                  Salvar Funcionário
+                  {editingUserId ? 'Salvar Novo PIN' : 'Cadastrar Funcionário'}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* QR Code Modal */}

@@ -524,31 +524,34 @@ class DatabaseStore {
 
   // --- ACTIONS: TABS (COMANDAS) ---
   /**
-   * Opens a new tab for a table.
+   * Opens a new tab for a table or for quick counter/takeout.
    * Strictly enforces: Only one active open tab per table at any time.
    */
   public openTab(params: {
-    table_id: string;
+    table_id?: string | null;
     opened_by_user_id: string;
     customer_name?: string;
     customer_phone?: string;
     notes?: string;
   }): Tab {
-    const table = this.tables.find((t) => t.id === params.table_id);
-    if (!table) throw new Error('Mesa não encontrada');
+    let table: RestaurantTable | undefined;
+    if (params.table_id) {
+      table = this.tables.find((t) => t.id === params.table_id);
+      if (!table) throw new Error('Mesa não encontrada');
 
-    // Rule 5: Impedir duas comandas ativas para a mesma mesa
-    const existingOpenTab = this.tabs.find(
-      (t) => t.table_id === params.table_id && t.status === 'open'
-    );
-    if (existingOpenTab) {
-      throw new Error(`A ${table.label} já possui uma comanda aberta ativa.`);
+      // Rule 5: Impedir duas comandas ativas para a mesma mesa
+      const existingOpenTab = this.tabs.find(
+        (t) => t.table_id === params.table_id && t.status === 'open'
+      );
+      if (existingOpenTab) {
+        throw new Error(`A ${table.label} já possui uma comanda aberta ativa.`);
+      }
     }
 
     const newTab: Tab = {
       id: `tab-${Date.now()}`,
       establishment_id: this.establishment.id,
-      table_id: table.id,
+      table_id: table ? table.id : null,
       opened_by: params.opened_by_user_id,
       closed_by: null,
       customer_name: params.customer_name || null,
@@ -567,8 +570,10 @@ class DatabaseStore {
     };
 
     this.tabs.unshift(newTab);
-    table.status = 'ocupada';
-    table.active_tab = newTab;
+    if (table) {
+      table.status = 'ocupada';
+      table.active_tab = newTab;
+    }
 
     this.notify();
     return newTab;
@@ -663,9 +668,21 @@ class DatabaseStore {
 
     this.orders.unshift(newOrder);
 
-    // If linked to tab, update Tab total atomically
-    if (params.tab_id) {
-      const tab = this.tabs.find((t) => t.id === params.tab_id);
+    // If not linked to a table tab, automatically create a Counter/Takeout tab so it appears at Cashier
+    let targetTabId = params.tab_id;
+    if (!targetTabId) {
+      const takeoutTab = this.openTab({
+        opened_by_user_id: 'online_takeout',
+        customer_name: `${params.customer_name || 'Cliente'} (Retirada Balcão)`,
+        customer_phone: params.customer_phone || undefined,
+        notes: `Pedido #${orderNumber} via Cardápio Online para Retirada no Balcão`,
+      });
+      targetTabId = takeoutTab.id;
+    }
+
+    // Link order to tab and update total atomically
+    if (targetTabId) {
+      const tab = this.tabs.find((t) => t.id === targetTabId);
       if (tab) {
         if (!tab.orders) tab.orders = [];
         tab.orders.push(newOrder);
