@@ -17,6 +17,7 @@ import {
 } from '../types/database.types';
 import { splitBillEqual, validateCustomSplit } from './currency';
 import { soundService } from './sound';
+import { supabaseSync } from './supabaseSync';
 
 // Initial Seed Data for CT Conveniência
 const INITIAL_ESTABLISHMENT: Establishment = {
@@ -236,7 +237,169 @@ class DatabaseStore {
   private nextOrderNumber: number = 101;
 
   constructor() {
-    this.seedInitialActiveTab();
+    this.loadFromStorage();
+    if (this.orders.length === 0 && this.tabs.length === 0) {
+      this.seedInitialActiveTab();
+    }
+    this.initRealtimeSync();
+  }
+
+  private loadFromStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      const storedProfiles = localStorage.getItem('ct_profiles');
+      if (storedProfiles) {
+        const parsed = JSON.parse(storedProfiles);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.profiles = parsed;
+        }
+      }
+
+      const storedTables = localStorage.getItem('ct_tables');
+      if (storedTables) {
+        const parsed = JSON.parse(storedTables);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.tables = parsed;
+        }
+      }
+
+      const storedTabs = localStorage.getItem('ct_tabs');
+      if (storedTabs) {
+        const parsed = JSON.parse(storedTabs);
+        if (Array.isArray(parsed)) {
+          this.tabs = parsed;
+        }
+      }
+
+      const storedOrders = localStorage.getItem('ct_orders');
+      if (storedOrders) {
+        const parsed = JSON.parse(storedOrders);
+        if (Array.isArray(parsed)) {
+          this.orders = parsed;
+        }
+      }
+
+      const storedProducts = localStorage.getItem('ct_products');
+      if (storedProducts) {
+        const parsed = JSON.parse(storedProducts);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.products = parsed;
+        }
+      }
+
+      const storedEstablishment = localStorage.getItem('ct_establishment');
+      if (storedEstablishment) {
+        const parsed = JSON.parse(storedEstablishment);
+        if (parsed && parsed.name) {
+          this.establishment = parsed;
+        }
+      }
+
+      const storedNextOrderNum = localStorage.getItem('ct_next_order_num');
+      if (storedNextOrderNum) {
+        this.nextOrderNumber = Number(storedNextOrderNum) || 101;
+      }
+
+      const storedPayments = localStorage.getItem('ct_payments');
+      if (storedPayments) {
+        const parsed = JSON.parse(storedPayments);
+        if (Array.isArray(parsed)) {
+          this.payments = parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar dados do localStorage:', e);
+    }
+  }
+
+  private persist() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('ct_profiles', JSON.stringify(this.profiles));
+      localStorage.setItem('ct_tables', JSON.stringify(this.tables));
+      localStorage.setItem('ct_tabs', JSON.stringify(this.tabs));
+      localStorage.setItem('ct_orders', JSON.stringify(this.orders));
+      localStorage.setItem('ct_products', JSON.stringify(this.products));
+      localStorage.setItem('ct_establishment', JSON.stringify(this.establishment));
+      localStorage.setItem('ct_next_order_num', String(this.nextOrderNumber));
+      localStorage.setItem('ct_payments', JSON.stringify(this.payments));
+    } catch (e) {
+      console.warn('Erro ao salvar no localStorage:', e);
+    }
+  }
+
+  private initRealtimeSync() {
+    if (typeof window === 'undefined') return;
+
+    supabaseSync.init({
+      onRemoteOrderCreated: (remoteOrder, remoteTab) => {
+        // Prevent duplicate insertion
+        if (!this.orders.some((o) => o.id === remoteOrder.id)) {
+          this.orders.unshift(remoteOrder);
+        }
+        if (remoteTab) {
+          const tabIdx = this.tabs.findIndex((t) => t.id === remoteTab.id);
+          if (tabIdx !== -1) {
+            this.tabs[tabIdx] = remoteTab;
+          } else {
+            this.tabs.unshift(remoteTab);
+          }
+          if (remoteTab.table_id) {
+            const table = this.tables.find((t) => t.id === remoteTab.table_id);
+            if (table) table.status = 'ocupada';
+          }
+        }
+        this.persist();
+        this.notify();
+      },
+      onRemoteItemStatusUpdated: (itemId, newStatus) => {
+        for (const order of this.orders) {
+          const item = order.items.find((i) => i.id === itemId);
+          if (item) {
+            item.status = newStatus;
+            if (newStatus === 'ready') item.prepared_at = new Date().toISOString();
+            if (newStatus === 'delivered') item.delivered_at = new Date().toISOString();
+            break;
+          }
+        }
+        this.persist();
+        this.notify();
+      },
+      onRemoteProfilesUpdated: (profiles) => {
+        if (Array.isArray(profiles) && profiles.length > 0) {
+          this.profiles = profiles;
+          this.persist();
+          this.notify();
+        }
+      },
+      onRemoteTabUpdated: (tab) => {
+        const idx = this.tabs.findIndex((t) => t.id === tab.id);
+        if (idx !== -1) {
+          this.tabs[idx] = tab;
+        } else {
+          this.tabs.unshift(tab);
+        }
+        this.persist();
+        this.notify();
+      },
+      onFullSyncReceived: (data) => {
+        if (data.profiles && data.profiles.length > 0) {
+          this.profiles = data.profiles;
+        }
+        if (data.orders && data.orders.length > 0) {
+          const existingIds = new Set(this.orders.map((o) => o.id));
+          const newOrders = data.orders.filter((o) => !existingIds.has(o.id));
+          this.orders = [...newOrders, ...this.orders];
+        }
+        if (data.tabs && data.tabs.length > 0) {
+          const existingTabIds = new Set(this.tabs.map((t) => t.id));
+          const newTabs = data.tabs.filter((t) => !existingTabIds.has(t.id));
+          this.tabs = [...newTabs, ...this.tabs];
+        }
+        this.persist();
+        this.notify();
+      },
+    });
   }
 
   // Pre-seed an active tab for demonstration of Kitchen and Cashier right away
@@ -405,7 +568,38 @@ class DatabaseStore {
   }
 
   public getTableByQrToken(token: string): RestaurantTable | undefined {
-    return this.getTables().find((t) => t.qr_token === token);
+    if (!token) return undefined;
+    const cleanToken = token.trim();
+    const tables = this.getTables();
+
+    // 1. Direct match on qr_token
+    let matched = tables.find((t) => t.qr_token === cleanToken);
+    if (matched) return matched;
+
+    // 2. Case-insensitive match on qr_token
+    matched = tables.find((t) => t.qr_token.toLowerCase() === cleanToken.toLowerCase());
+    if (matched) return matched;
+
+    // 3. Match on table_number directly (e.g. "?mesa=2" or "?mesa=02")
+    const numericToken = parseInt(cleanToken, 10);
+    if (!isNaN(numericToken)) {
+      matched = tables.find((t) => t.table_number === numericToken);
+      if (matched) return matched;
+    }
+
+    // 4. Match on ID (e.g. "t2")
+    matched = tables.find((t) => t.id === cleanToken);
+    if (matched) return matched;
+
+    // 5. Match if token contains mesa number pattern (e.g. "mesa-2" or "mesa-02" or "mesa-02-token")
+    const matchNumber = cleanToken.match(/mesa[-_ ]?0*(\d+)/i);
+    if (matchNumber && matchNumber[1]) {
+      const parsedNum = parseInt(matchNumber[1], 10);
+      matched = tables.find((t) => t.table_number === parsedNum);
+      if (matched) return matched;
+    }
+
+    return undefined;
   }
 
   public getTabs(): Tab[] {
@@ -473,6 +667,7 @@ class DatabaseStore {
       };
       this.products.unshift(newProduct);
     }
+    this.persist();
     this.notify();
   }
 
@@ -497,6 +692,7 @@ class DatabaseStore {
       };
       this.tables.push(newTable);
     }
+    this.persist();
     this.notify();
   }
 
@@ -519,7 +715,10 @@ class DatabaseStore {
       };
       this.profiles.push(newProfile);
     }
+    this.persist();
     this.notify();
+    supabaseSync.broadcastProfiles(this.profiles);
+    supabaseSync.saveToCloud('profiles', this.profiles);
   }
 
   // --- ACTIONS: TABS (COMANDAS) ---
@@ -575,7 +774,10 @@ class DatabaseStore {
       table.active_tab = newTab;
     }
 
+    this.persist();
     this.notify();
+    supabaseSync.broadcastTab(newTab);
+    supabaseSync.saveToCloud('tabs', this.tabs);
     return newTab;
   }
 
@@ -681,17 +883,25 @@ class DatabaseStore {
     }
 
     // Link order to tab and update total atomically
+    let targetTab: Tab | undefined;
     if (targetTabId) {
-      const tab = this.tabs.find((t) => t.id === targetTabId);
-      if (tab) {
-        if (!tab.orders) tab.orders = [];
-        tab.orders.push(newOrder);
-        tab.total_cents += orderTotalCents;
+      targetTab = this.tabs.find((t) => t.id === targetTabId);
+      if (targetTab) {
+        if (!targetTab.orders) targetTab.orders = [];
+        targetTab.orders.push(newOrder);
+        targetTab.total_cents += orderTotalCents;
       }
     }
 
     soundService.playSuccessDing();
+    this.persist();
     this.notify();
+
+    // Broadcast in real-time to other devices (Kitchen KDS, Cashier, Waiter phones)
+    supabaseSync.broadcastOrder(newOrder, targetTab);
+    supabaseSync.saveToCloud('orders', this.orders);
+    supabaseSync.saveToCloud('tabs', this.tabs);
+
     return newOrder;
   }
 
@@ -721,7 +931,10 @@ class DatabaseStore {
           order.status = 'preparing';
         }
 
+        this.persist();
         this.notify();
+        supabaseSync.broadcastItemStatus(itemId, newStatus);
+        supabaseSync.saveToCloud('orders', this.orders);
         return;
       }
     }
@@ -754,7 +967,9 @@ class DatabaseStore {
     else if (anyPreparing) order.status = 'preparing';
     else order.status = newStatus;
 
+    this.persist();
     this.notify();
+    supabaseSync.saveToCloud('orders', this.orders);
   }
 
   // --- ACTIONS: BILL SPLITS (DIVIDIR CONTA) ---
@@ -905,7 +1120,10 @@ class DatabaseStore {
     }
 
     soundService.playSuccessDing();
+    this.persist();
     this.notify();
+    supabaseSync.broadcastTab(tab);
+    supabaseSync.saveToCloud('tabs', this.tabs);
     return payment;
   }
 
@@ -935,7 +1153,10 @@ class DatabaseStore {
     }
 
     soundService.playSuccessDing();
+    this.persist();
     this.notify();
+    supabaseSync.broadcastTab(tab);
+    supabaseSync.saveToCloud('tabs', this.tabs);
     return tab;
   }
 }

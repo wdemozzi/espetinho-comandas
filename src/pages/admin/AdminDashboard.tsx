@@ -7,6 +7,13 @@ import { SectorBadge, TableStatusBadge } from '../../components/common/Badge';
 import { QrCodeModal } from '../../components/common/QrCodeModal';
 import { ImageUploadWebP } from '../../components/common/ImageUploadWebP';
 import {
+  getSupabaseUrl,
+  getSupabaseAnonKey,
+  setSupabaseAnonKey,
+  isSupabaseConfigured,
+} from '../../lib/supabaseClient';
+import { supabaseSync } from '../../lib/supabaseSync';
+import {
   ShieldCheck,
   TrendingUp,
   Package,
@@ -23,16 +30,31 @@ import {
   X,
   KeyRound,
   Lock,
+  Cloud,
+  Radio,
+  Copy,
+  ExternalLink,
+  Check,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'tables' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'tables' | 'users' | 'cloud'>('overview');
   const [products, setProducts] = useState<Product[]>(db.getProducts());
   const [tables, setTables] = useState<RestaurantTable[]>(db.getTables());
   const categories = db.getCategories();
   const [profiles, setProfiles] = useState<Profile[]>(db.getProfiles());
   const tabs = db.getTabs();
   const orders = db.getOrders();
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Supabase cloud sync state
+  const [anonKeyInput, setAnonKeyInput] = useState<string>(getSupabaseAnonKey());
+  const [syncStatus, setSyncStatus] = useState(supabaseSync.getStatus());
+  const [copiedSql, setCopiedSql] = useState<boolean>(false);
 
   // Modals state
   const [selectedTableForQr, setSelectedTableForQr] = useState<RestaurantTable | null>(null);
@@ -149,10 +171,75 @@ export const AdminDashboard: React.FC = () => {
     setNewUserName('');
     setNewUserPhone('');
     setNewUserPin('1234');
+    setToastMessage('PIN atualizado com sucesso e salvo permanentemente!');
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleSaveAnonKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!anonKeyInput.trim()) return;
+    setSupabaseAnonKey(anonKeyInput.trim());
+    supabaseSync.reconnect();
+    setSyncStatus(supabaseSync.getStatus());
+    setToastMessage('Chave Supabase salva com sucesso! Sincronização em tempo real ativada.');
+    setTimeout(() => setToastMessage(null), 5000);
+  };
+
+  const handleCopySql = () => {
+    const sqlContent = `-- Execute no SQL Editor do Supabase:
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS public.ct_cloud_sync (
+    id TEXT PRIMARY KEY,
+    data JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.ct_cloud_sync ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Leitura publica ct_cloud_sync" ON public.ct_cloud_sync;
+CREATE POLICY "Leitura publica ct_cloud_sync" ON public.ct_cloud_sync
+    FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Insercao publica ct_cloud_sync" ON public.ct_cloud_sync;
+CREATE POLICY "Insercao publica ct_cloud_sync" ON public.ct_cloud_sync
+    FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Atualizacao publica ct_cloud_sync" ON public.ct_cloud_sync;
+CREATE POLICY "Atualizacao publica ct_cloud_sync" ON public.ct_cloud_sync
+    FOR UPDATE TO anon, authenticated USING (true);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND schemaname = 'public' 
+        AND tablename = 'ct_cloud_sync'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.ct_cloud_sync;
+    END IF;
+END $$;`;
+    navigator.clipboard.writeText(sqlContent);
+    setCopiedSql(true);
+    setTimeout(() => setCopiedSql(false), 3000);
   };
 
   return (
     <div className="space-y-6">
+      {/* Toast Feedback */}
+      {toastMessage && (
+        <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-xs font-bold flex items-center justify-between shadow-lg shadow-emerald-950/40">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>{toastMessage}</span>
+          </div>
+          <button onClick={() => setToastMessage(null)} className="text-emerald-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Banner */}
       <div className="bg-charcoal-850 p-4 sm:p-6 rounded-2xl border border-gray-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -214,6 +301,25 @@ export const AdminDashboard: React.FC = () => {
           >
             <Users className="w-3.5 h-3.5" />
             <span>Equipe & Perfis</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('cloud');
+              setSyncStatus(supabaseSync.getStatus());
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'cloud'
+                ? 'bg-charcoal-800 text-cyan-400 shadow'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <Cloud className="w-3.5 h-3.5" />
+            <span>Nuvem & Supabase</span>
+            {syncStatus.isConfigured ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+            )}
           </button>
         </div>
       </div>
@@ -441,6 +547,192 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: NUVEM & SUPABASE REALTIME */}
+      {activeTab === 'cloud' && (
+        <div className="space-y-6">
+          {/* Status Card */}
+          <div className="p-6 rounded-2xl bg-charcoal-850 border border-gray-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
+                    syncStatus.isConfigured
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                      : 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                  }`}
+                >
+                  <Cloud className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white flex items-center gap-2">
+                    <span>Sincronização em Nuvem Supabase</span>
+                    {syncStatus.isConfigured ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                        Ativo em Tempo Real
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                        Chave Pendente
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Permite que pedidos feitos no celular (via QR Code ou Cardápio Online) cheguem instantaneamente na Cozinha e no Caixa do computador em tempo real.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    supabaseSync.reconnect();
+                    setSyncStatus(supabaseSync.getStatus());
+                    setToastMessage('Tentativa de reconexão executada!');
+                    setTimeout(() => setToastMessage(null), 3000);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-200 text-xs font-bold border border-gray-700 flex items-center gap-1.5 transition"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Testar Conexão</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Connection Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-charcoal-900 border border-gray-800">
+                <span className="text-[11px] font-semibold text-gray-400 block mb-0.5">URL do Projeto Supabase:</span>
+                <code className="text-xs font-mono text-cyan-300 font-bold break-all select-all">
+                  {getSupabaseUrl()}
+                </code>
+              </div>
+              <div className="p-3 rounded-xl bg-charcoal-900 border border-gray-800">
+                <span className="text-[11px] font-semibold text-gray-400 block mb-0.5">Status do Canal Realtime:</span>
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  {syncStatus.isConfigured ? (
+                    <>
+                      <Wifi className="w-4 h-4 text-emerald-400 animate-pulse" />
+                      <span className="text-emerald-400">Canal ct_conveniencia_realtime Conectado</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff className="w-4 h-4 text-amber-400" />
+                      <span className="text-amber-400">Desconectado (Insira a Anon Key abaixo)</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Form to insert/update Anon Key */}
+          <div className="p-6 rounded-2xl bg-charcoal-850 border border-gray-800 space-y-4">
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-amber-400" />
+                <span>Configurar Chave Pública (Anon Key) do Supabase</span>
+              </h3>
+              <p className="text-xs text-gray-400 mt-1">
+                Cole aqui a chave pública anônima (<code className="text-amber-300 font-mono">anon public</code>) gerada pelo seu Supabase. Ela é salva neste navegador e conecta instantaneamente celulares e computadores!
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveAnonKey} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-300 block mb-1">
+                  Chave Anon do Supabase (anon public):
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Cole sua anon key aqui (ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...)"
+                  value={anonKeyInput}
+                  onChange={(e) => setAnonKeyInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-charcoal-900 border border-gray-700 focus:border-cyan-500 rounded-xl text-xs font-mono text-cyan-200 placeholder-gray-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+                <a
+                  href="https://supabase.com/dashboard/project/ogldhoxfbjhgvwpjocoj/settings/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 underline font-semibold"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Obter Anon Key no Supabase (Project Settings &rarr; API)</span>
+                </a>
+
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/30 transition flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Salvar Chave & Ativar Realtime</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* SQL Editor Instructions */}
+          <div className="p-6 rounded-2xl bg-charcoal-850 border border-gray-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <Database className="w-4 h-4 text-purple-400" />
+                  <span>Configuração de Tabelas no Supabase (Opcional para Backup)</span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  O canal em tempo real já sincroniza instantaneamente. Se desejar persistência no banco de dados do Supabase, execute este script no SQL Editor.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopySql}
+                  className="px-3.5 py-1.5 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5 transition"
+                >
+                  {copiedSql ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Copiar Script SQL</span>
+                    </>
+                  )}
+                </button>
+                <a
+                  href="https://supabase.com/dashboard/project/ogldhoxfbjhgvwpjocoj/sql/new"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 text-xs font-bold border border-purple-500/40 flex items-center gap-1.5 transition"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Abrir SQL Editor</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-charcoal-900 border border-gray-800 text-[11px] font-mono text-gray-300 overflow-x-auto max-h-48">
+              <pre>{`-- 1. Tabela de Sincronização em Nuvem (Document Sync)
+CREATE TABLE IF NOT EXISTS public.ct_cloud_sync (
+    id TEXT PRIMARY KEY,
+    data JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.ct_cloud_sync ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Read/Write" ON public.ct_cloud_sync FOR ALL TO anon, authenticated USING (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.ct_cloud_sync;`}</pre>
+            </div>
           </div>
         </div>
       )}
