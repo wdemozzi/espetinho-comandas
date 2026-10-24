@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../../lib/databaseStore';
 import { Product, RestaurantTable, Category } from '../../types/database.types';
 import { formatBRL } from '../../lib/currency';
@@ -52,11 +53,10 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
   const [modalSelectedAddons, setModalSelectedAddons] = useState<{ name: string; price_cents: number }[]>([]);
   const [modalNotes, setModalNotes] = useState<string>('');
 
-  // Checkout form
-  const [orderType, setOrderType] = useState<'dine_in' | 'delivery' | 'takeout'>('dine_in');
+  // Checkout form (dine_in for table QR, takeout for web catalog)
+  const [orderType, setOrderType] = useState<'dine_in' | 'takeout'>('takeout');
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
-  const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [generalNotes, setGeneralNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [orderSuccessId, setOrderSuccessId] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
         setOrderType('dine_in');
       }
     } else {
-      setOrderType('delivery');
+      setOrderType('takeout');
     }
   }, [tableToken]);
 
@@ -128,10 +128,6 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       setErrorMessage('Por favor informe seu nome.');
       return;
     }
-    if (orderType === 'delivery' && !deliveryAddress.trim()) {
-      setErrorMessage('Por favor informe o endereço de entrega completo.');
-      return;
-    }
 
     try {
       setIsSubmitting(true);
@@ -160,7 +156,6 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
         order_type: orderType,
         customer_name: customerName,
         customer_phone: customerPhone,
-        delivery_address: orderType === 'delivery' ? deliveryAddress : undefined,
         general_notes: generalNotes || undefined,
         items: cart.map((ci) => ({
           product_id: ci.product.id,
@@ -232,11 +227,14 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
               </span>
             </div>
           ) : (
-            <div className="p-3 rounded-xl bg-charcoal-800 border border-gray-700 flex items-center justify-between text-xs text-gray-300">
+            <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-800/60 flex items-center justify-between text-xs text-purple-200">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Cardápio Oficial para Pedidos Online (Retirada & Delivery)</span>
+                <ShoppingBag className="w-4 h-4 text-purple-400" />
+                <span>Cardápio Oficial para Pedidos com <strong>Retirada no Balcão</strong></span>
               </div>
+              <span className="text-[11px] bg-purple-900/60 px-2.5 py-0.5 rounded-full text-purple-200 font-semibold border border-purple-700/50">
+                Pague e Retire
+              </span>
             </div>
           )}
         </div>
@@ -522,33 +520,13 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                 </h4>
 
                 {!table && (
-                  <div>
-                    <label className="text-[11px] font-semibold text-gray-400 block mb-1">
-                      Tipo do Pedido:
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setOrderType('delivery')}
-                        className={`py-2 rounded-lg text-xs font-bold border transition ${
-                          orderType === 'delivery'
-                            ? 'bg-ember-600 text-white border-ember-500'
-                            : 'bg-charcoal-800 text-gray-400 border-gray-700'
-                        }`}
-                      >
-                        Entrega / Delivery
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setOrderType('takeout')}
-                        className={`py-2 rounded-lg text-xs font-bold border transition ${
-                          orderType === 'takeout'
-                            ? 'bg-ember-600 text-white border-ember-500'
-                            : 'bg-charcoal-800 text-gray-400 border-gray-700'
-                        }`}
-                      >
-                        Retirada no Balcão
-                      </button>
+                  <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-800/60 flex items-start gap-2.5 text-xs text-purple-200">
+                    <ShoppingBag className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-bold text-white">Modalidade: Retirada no Balcão</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Retire na <strong className="text-gray-300">{establishment.name}</strong> • {establishment.address}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -569,7 +547,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-400 block mb-1">WhatsApp / Telefone:</label>
+                  <label className="text-[11px] font-semibold text-gray-400 block mb-1">WhatsApp / Telefone para Contato:</label>
                   <div className="relative">
                     <Phone className="w-4 h-4 absolute left-3 top-2.5 text-gray-500" />
                     <input
@@ -580,26 +558,8 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                       className="w-full pl-9 pr-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
                     />
                   </div>
+                  <p className="text-[10px] text-gray-500 mt-1">Avisaremos por WhatsApp assim que os itens estiverem prontos para retirada.</p>
                 </div>
-
-                {orderType === 'delivery' && (
-                  <div>
-                    <label className="text-[11px] font-semibold text-gray-400 block mb-1">
-                      Endereço de Entrega Completo:
-                    </label>
-                    <div className="relative">
-                      <MapPin className="w-4 h-4 absolute left-3 top-2.5 text-gray-500" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="Rua, número, bairro e ponto de referência"
-                        value={deliveryAddress}
-                        onChange={(e) => setDeliveryAddress(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -627,17 +587,19 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       )}
 
       {/* Order Success Confirmation Modal */}
-      {orderSuccessId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-charcoal-900 border border-emerald-500/80 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
+      {orderSuccessId && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-charcoal-900 border border-emerald-500/80 rounded-2xl p-6 text-center space-y-4 shadow-2xl my-auto">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-600/20 border border-emerald-500 flex items-center justify-center text-emerald-400 animate-bounce">
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
             <div>
-              <h3 className="text-xl font-black text-white">Pedido Recebido!</h3>
-              <p className="text-xs text-gray-400 mt-1">
-                Seu pedido foi enviado diretamente para a nossa cozinha e já está na fila de preparo.
+              <h3 className="text-xl font-black text-white">Pedido Confirmado!</h3>
+              <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+                {table
+                  ? 'Seu pedido foi enviado diretamente para a nossa cozinha e será entregue na sua mesa!'
+                  : 'Seu pedido foi recebido e já está em preparo! Avisaremos no seu WhatsApp assim que estiver pronto para retirada no balcão da CT Conveniência.'}
               </p>
             </div>
 
@@ -649,12 +611,13 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
             <button
               type="button"
               onClick={() => setOrderSuccessId(null)}
-              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition"
+              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-900/30"
             >
-              Fazer Novo Pedido
+              Concluir
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
