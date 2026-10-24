@@ -19,6 +19,114 @@ export const VALID_BRAZILIAN_DDDS = new Set([
   '91', '93', '94', '92', '97', '95', '96', '98', '99', // PA, AM, RR, AP, MA
 ]);
 
+// Dicionário de termos de baixo calão, xingamentos e palavras ofensivas em português
+export const PROFANITY_WORDS_SET = new Set([
+  // Palavrões e variações
+  'puta', 'puto', 'putaria', 'putinha', 'putao', 'putazo',
+  'vadia', 'vagabunda', 'vagabundo', 'piranha', 'biscate', 'quenga', 'kenga',
+  'caralho', 'caralhao', 'caralhada', 'krl', 'caraio', 'carai', 'cacete',
+  'foder', 'foda', 'fodase', 'fudeu', 'fudido', 'fudida', 'fodido', 'fodida',
+  'fdp', 'prr',
+  'porra', 'porran', 'porrinha',
+  'merda', 'bosta', 'bostinha',
+  'cu', 'cuzao', 'cuzinho', 'cusao', 'cuzaum',
+  'arrombado', 'arrombada', 'arrombadinho', 'rombado',
+  'viado', 'viadinho', 'veado', 'bicha', 'boiola', 'gayzola', 'traveco',
+  'corno', 'corna', 'chifrudo', 'chifruda',
+  'desgraca', 'desgracado', 'desgracada',
+  'pinto', 'piroca', 'pirocao', 'rola', 'rolao', 'pica', 'picao', 'penis',
+  'buceta', 'bct', 'bucetao', 'bucetinha', 'xoxota', 'xana', 'xereca',
+  'punheta', 'punheteiro',
+  'boquete', 'boqueteiro', 'boqueteira', 'mamador',
+  'otario', 'otaria', 'babaca', 'retardado', 'imbecil',
+  'vtnc', 'vsf', 'tnc',
+  'nazista', 'hitler',
+]);
+
+export const COMPOUND_PROFANITY_PATTERNS = [
+  'filhodaputa',
+  'filhadaputa',
+  'vaitomarnocu',
+  'tomarnocu',
+  'tomanocu',
+  'vaisefoder',
+  'sefoder',
+  'paunocu',
+  'comocu',
+];
+
+/**
+ * Normaliza um texto para detecção de termos de baixo calão,
+ * tratando acentuação, leetspeak (números simulando letras) e repetições consecutivas.
+ */
+export function detectProfanity(rawText: string): { hasProfanity: boolean; matchedWord?: string } {
+  if (!rawText || !rawText.trim()) return { hasProfanity: false };
+
+  // 1. Remove acentuação e converte para minúsculas
+  let str = rawText
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // 2. Converte leetspeak comum
+  str = str
+    .replace(/[@4]/g, 'a')
+    .replace(/[3]/g, 'e')
+    .replace(/[1!|]/g, 'i')
+    .replace(/[0]/g, 'o')
+    .replace(/[$5]/g, 's')
+    .replace(/[7]/g, 't');
+
+  // 3. Colapso de caracteres repetidos sucessivos (ex: 'puuuutaaa' -> 'puta')
+  const singleCharCollapsed = str.replace(/(.)\1+/g, '$1');
+  const doubleCharCollapsed = str.replace(/(.)\1{2,}/g, '$1$1');
+
+  // 4. Versão sem espaços para pegar 'p.u.t.a', 'p u t a', 'f-d-p'
+  const continuousNoSpaces = str.replace(/[^a-z0-9]/gi, '');
+  const continuousSingle = singleCharCollapsed.replace(/[^a-z0-9]/gi, '');
+
+  // Checa compostos contínuos
+  for (const compound of COMPOUND_PROFANITY_PATTERNS) {
+    if (continuousNoSpaces.includes(compound) || continuousSingle.includes(compound)) {
+      return { hasProfanity: true, matchedWord: compound };
+    }
+  }
+
+  // 5. Divide em palavras/tokens
+  const tokensRaw = str.split(/[^a-z0-9]+/i).filter((t) => t.length > 0);
+  const tokensSingle = singleCharCollapsed.split(/[^a-z0-9]+/i).filter((t) => t.length > 0);
+  const tokensDouble = doubleCharCollapsed.split(/[^a-z0-9]+/i).filter((t) => t.length > 0);
+
+  const allTokens = new Set([...tokensRaw, ...tokensSingle, ...tokensDouble]);
+
+  for (const token of allTokens) {
+    if (PROFANITY_WORDS_SET.has(token)) {
+      return { hasProfanity: true, matchedWord: token };
+    }
+  }
+
+  // Checa casos diretos como 'fdp' colapsado
+  if (PROFANITY_WORDS_SET.has(continuousNoSpaces) || PROFANITY_WORDS_SET.has(continuousSingle)) {
+    return { hasProfanity: true, matchedWord: continuousNoSpaces };
+  }
+
+  return { hasProfanity: false };
+}
+
+/**
+ * Valida que um texto de observações não contém palavrões ou termos ofensivos.
+ */
+export function validateTextNoProfanity(rawText: string, fieldLabel = 'observação'): { isValid: boolean; error?: string } {
+  const profanityCheck = detectProfanity(rawText);
+  if (profanityCheck.hasProfanity) {
+    return {
+      isValid: false,
+      error: `A ${fieldLabel} contém termos de baixo calão ou palavras inadequadas. Por favor, reescreva com respeito.`,
+    };
+  }
+  return { isValid: true };
+}
+
 /**
  * Validates a Brazilian customer name.
  * Requires:
@@ -27,6 +135,7 @@ export const VALID_BRAZILIAN_DDDS = new Set([
  * - At least one vowel (rejects 'jsjsjs', 'bdjsjsjs', etc.).
  * - No 3 identical consecutive letters (rejects 'aaaa', 'ssss').
  * - At least 2 words (e.g. Nome e Sobrenome) or a solid realistic single name of >= 3 chars.
+ * - Strict prohibition of profanities, insults, slurs, and low-level obscene words.
  */
 export function validateCustomerName(rawName: string): { isValid: boolean; error?: string } {
   const name = rawName.trim();
@@ -67,6 +176,15 @@ export function validateCustomerName(rawName: string): { isValid: boolean; error
   ];
   if (smashPatterns.some((pattern) => lower.includes(pattern))) {
     return { isValid: false, error: 'Por favor, informe seu nome real.' };
+  }
+
+  // Verificação estrita de palavrões e termos de baixo calão / xingamentos
+  const profanityCheck = detectProfanity(name);
+  if (profanityCheck.hasProfanity) {
+    return {
+      isValid: false,
+      error: 'O nome informado contém palavras inadequadas ou desrespeitosas. Por favor, informe seu nome real.',
+    };
   }
 
   // Check word count: Recommend or require first & last name

@@ -7,6 +7,7 @@ import { TableStatusBadge } from '../../components/common/Badge';
 import { OrderLauncherModal } from '../../components/waiter/OrderLauncherModal';
 import { QrCodeModal } from '../../components/common/QrCodeModal';
 import { TableTransferModal } from '../../components/waiter/TableTransferModal';
+import { detectProfanity, validateTextNoProfanity } from '../../lib/validators';
 import {
   UtensilsCrossed,
   Plus,
@@ -55,6 +56,21 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
   const handleOpenTab = (e: React.FormEvent) => {
     e.preventDefault();
     if (!openTabModalTable) return;
+
+    if (customerName.trim()) {
+      const profCheck = detectProfanity(customerName);
+      if (profCheck.hasProfanity) {
+        setErrorMsg('Nome do cliente contém palavras inadequadas ou desrespeitosas.');
+        return;
+      }
+    }
+    if (tabNotes.trim()) {
+      const notesCheck = validateTextNoProfanity(tabNotes, 'observação');
+      if (!notesCheck.isValid) {
+        setErrorMsg(notesCheck.error || 'A observação contém termos inadequados.');
+        return;
+      }
+    }
 
     try {
       setErrorMsg(null);

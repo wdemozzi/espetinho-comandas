@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { validateCustomerName, validateBrazilianMobilePhone, formatPhoneMask } from './validators';
+import {
+  validateCustomerName,
+  validateBrazilianMobilePhone,
+  formatPhoneMask,
+  detectProfanity,
+  validateTextNoProfanity,
+} from './validators';
 
 describe('Validators', () => {
   describe('validateCustomerName', () => {
@@ -22,6 +28,49 @@ describe('Validators', () => {
     it('rejects numbers and special symbols', () => {
       expect(validateCustomerName('Carlos 123').isValid).toBe(false);
       expect(validateCustomerName('Carlos @Silva').isValid).toBe(false);
+    });
+
+    it('strictly rejects names with profanities, insults, and vulgar slurs', () => {
+      expect(validateCustomerName('Puta Silva').isValid).toBe(false);
+      expect(validateCustomerName('Carlos Caralho').isValid).toBe(false);
+      expect(validateCustomerName('João Cuzão').isValid).toBe(false);
+      expect(validateCustomerName('Pedro Arrombado').isValid).toBe(false);
+      expect(validateCustomerName('Lucas Foder').isValid).toBe(false);
+      expect(validateCustomerName('Buceta Souza').isValid).toBe(false);
+      expect(validateCustomerName('Fdp Santos').isValid).toBe(false);
+      expect(validateCustomerName('Filho da Puta').isValid).toBe(false);
+      expect(validateCustomerName('Vai Tomar no Cu').isValid).toBe(false);
+
+      // Verify specific error message
+      const res = validateCustomerName('Carlos Caralho');
+      expect(res.error).toContain('palavras inadequadas');
+    });
+
+    it('allows legitimate names that contain common substrings without false positive', () => {
+      // 'Lucas' has 'cu' inside, but is a legitimate name
+      expect(validateCustomerName('Lucas Silva').isValid).toBe(true);
+      expect(validateCustomerName('Custodio Rocha').isValid).toBe(true);
+      expect(validateCustomerName('Carla Souza').isValid).toBe(true);
+      expect(validateCustomerName('Mariana Santos').isValid).toBe(true);
+    });
+  });
+
+  describe('detectProfanity & validateTextNoProfanity', () => {
+    it('detects profanities in observation notes', () => {
+      expect(detectProfanity('Capricha nessa porra').hasProfanity).toBe(true);
+      expect(detectProfanity('Carne bem passada seu fdp').hasProfanity).toBe(true);
+      expect(detectProfanity('vtnc').hasProfanity).toBe(true);
+      expect(detectProfanity('vai tomar no cu').hasProfanity).toBe(true);
+      expect(detectProfanity('sem cebola').hasProfanity).toBe(false);
+    });
+
+    it('rejects offensive notes and accepts clean order instructions', () => {
+      const badNotes = validateTextNoProfanity('manda rápido caralho', 'observação');
+      expect(badNotes.isValid).toBe(false);
+      expect(badNotes.error).toContain('baixo calão');
+
+      const cleanNotes = validateTextNoProfanity('Por favor colocar pouco sal na mandioca', 'observação');
+      expect(cleanNotes.isValid).toBe(true);
     });
   });
 

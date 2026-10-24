@@ -20,6 +20,7 @@ import {
 import { splitBillEqual, validateCustomSplit } from './currency';
 import { soundService } from './sound';
 import { supabaseSync } from './supabaseSync';
+import { detectProfanity, validateTextNoProfanity } from './validators';
 
 // Initial Seed Data for CT Conveniência
 const INITIAL_ESTABLISHMENT: Establishment = {
@@ -833,6 +834,19 @@ class DatabaseStore {
       }
     }
 
+    if (params.customer_name) {
+      const profCheck = detectProfanity(params.customer_name);
+      if (profCheck.hasProfanity) {
+        throw new Error('O nome informado contém termos de baixo calão ou palavras inadequadas.');
+      }
+    }
+    if (params.notes) {
+      const notesCheck = validateTextNoProfanity(params.notes, 'observação');
+      if (!notesCheck.isValid) {
+        throw new Error(notesCheck.error || 'A observação contém termos inadequados.');
+      }
+    }
+
     const newTab: Tab = {
       id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       establishment_id: this.establishment.id,
@@ -1156,6 +1170,27 @@ class DatabaseStore {
   }): Order {
     if (!params.items || params.items.length === 0) {
       throw new Error('O pedido deve conter pelo menos 1 item');
+    }
+
+    if (params.customer_name) {
+      const profCheck = detectProfanity(params.customer_name);
+      if (profCheck.hasProfanity) {
+        throw new Error('O nome do cliente contém termos de baixo calão ou palavras inadequadas.');
+      }
+    }
+    if (params.general_notes) {
+      const notesCheck = validateTextNoProfanity(params.general_notes, 'observação geral');
+      if (!notesCheck.isValid) {
+        throw new Error(notesCheck.error || 'A observação contém termos inadequados.');
+      }
+    }
+    for (const it of params.items) {
+      if (it.notes) {
+        const itemNoteCheck = validateTextNoProfanity(it.notes, 'observação do item');
+        if (!itemNoteCheck.isValid) {
+          throw new Error(itemNoteCheck.error || 'A observação do item contém termos inadequados.');
+        }
+      }
     }
 
     const orderId = `order-${Date.now()}`;

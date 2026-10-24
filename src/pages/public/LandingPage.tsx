@@ -4,7 +4,7 @@ import { db } from '../../lib/databaseStore';
 import { Product, Category, Order } from '../../types/database.types';
 import { formatBRL } from '../../lib/currency';
 import { SectorBadge } from '../../components/common/Badge';
-import { validateCustomerName, validateBrazilianMobilePhone, formatPhoneMask } from '../../lib/validators';
+import { validateCustomerName, validateBrazilianMobilePhone, formatPhoneMask, validateTextNoProfanity } from '../../lib/validators';
 import {
   Flame,
   ShoppingBag,
@@ -154,6 +154,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     if (!phoneCheck.isValid) {
       setErrorMessage(phoneCheck.error || 'Por favor informe um WhatsApp válido com DDD.');
       return;
+    }
+
+    if (generalNotes && generalNotes.trim()) {
+      const notesCheck = validateTextNoProfanity(generalNotes, 'observação geral');
+      if (!notesCheck.isValid) {
+        setErrorMessage(notesCheck.error || 'A observação contém termos inadequados.');
+        return;
+      }
+    }
+
+    for (const item of cart) {
+      if (item.notes && item.notes.trim()) {
+        const itemNoteCheck = validateTextNoProfanity(item.notes, `observação do item "${item.product.name}"`);
+        if (!itemNoteCheck.isValid) {
+          setErrorMessage(itemNoteCheck.error || 'Observação contém termos inadequados.');
+          return;
+        }
+      }
     }
 
     try {
