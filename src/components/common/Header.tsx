@@ -11,6 +11,7 @@ import {
   Volume2,
   Lock,
   UserCheck,
+  LogOut,
 } from 'lucide-react';
 import { soundService } from '../../lib/sound';
 import { OperatorSwitchModal } from './OperatorSwitchModal';
@@ -18,9 +19,10 @@ import { OperatorSwitchModal } from './OperatorSwitchModal';
 interface HeaderProps {
   currentView: string;
   onNavigate: (view: string) => void;
+  onLockOrExit?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
+export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLockOrExit }) => {
   const { currentUser } = useAuth();
   const [time, setTime] = useState<string>('');
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState<boolean>(false);
@@ -168,6 +170,18 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
                 </p>
               </div>
             </button>
+
+            {/* Exit/Lock to Public Site */}
+            {onLockOrExit && (
+              <button
+                type="button"
+                onClick={onLockOrExit}
+                title="Bloquear e voltar ao site público da CT Conveniência"
+                className="p-2 rounded-xl bg-charcoal-800 hover:bg-red-950/40 text-gray-400 hover:text-red-400 border border-gray-700 transition"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>

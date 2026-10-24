@@ -3,11 +3,64 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/ct-logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="description" content="CT Conveniência - Sistema de comandas inteligentes, KDS para bar e cozinha e cardápio digital" />
-    <title>CT Conveniência | Comandas Inteligentes & Cardápio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="theme-color" content="#8b5cf6" />
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>CT Conveniência | Cerveja Trincando, Espetinhos na Brasa & Cardápio Online</title>
+    <meta name="title" content="CT Conveniência | Cerveja Trincando, Espetinhos na Brasa & Cardápio Online" />
+    <meta name="description" content="Conveniência completa, cervejas e chopp trincando a -4°C, espetinhos nobres na brasa, porções e bebidas geladas. Faça seu pedido online para retirada rápida no balcão da CT Conveniência." />
+    <meta name="keywords" content="conveniência, espetinhos, cerveja gelada, chopp, espetinho na brasa, picanha, petiscos, porções, bebidas, retirada balcão, CT conveniência" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://espetinho-comandas.vercel.app/" />
+
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://espetinho-comandas.vercel.app/" />
+    <meta property="og:title" content="CT Conveniência | Cerveja Trincando & Espetinhos na Brasa" />
+    <meta property="og:description" content="Conveniência completa, espetinhos nobres grelhados na hora e bebidas trincando. Consulte nosso cardápio e faça seu pedido online para retirada!" />
+    <meta property="og:image" content="https://espetinho-comandas.vercel.app/ct-logo.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://espetinho-comandas.vercel.app/" />
+    <meta property="twitter:title" content="CT Conveniência | Cerveja Trincando & Espetinhos na Brasa" />
+    <meta property="twitter:description" content="Conveniência completa, espetinhos nobres grelhados na hora e bebidas trincando. Consulte nosso cardápio e faça seu pedido online para retirada!" />
+    <meta property="twitter:image" content="https://espetinho-comandas.vercel.app/ct-logo.png" />
+
+    <!-- Schema.org JSON-LD Structured Data for Google Local SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FastFoodRestaurant",
+      "name": "CT Conveniência",
+      "image": "https://espetinho-comandas.vercel.app/ct-logo.png",
+      "@id": "https://espetinho-comandas.vercel.app/",
+      "url": "https://espetinho-comandas.vercel.app/",
+      "telephone": "+5544998765432",
+      "priceRange": "$$",
+      "servesCuisine": ["Brasileira", "Espetinhos", "Churrasco", "Bebidas"],
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Av. Paraná, 1250",
+        "addressLocality": "Umuarama",
+        "addressRegion": "PR",
+        "addressCountry": "BR"
+      },
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+          "opens": "16:00",
+          "closes": "02:00"
+        }
+      ],
+      "hasMenu": "https://espetinho-comandas.vercel.app/",
+      "acceptsReservations": "False"
+    }
+    </script>
   </head>
-  <body class="bg-[#0c0a17] text-gray-100 select-none antialiased">
+  <body class="bg-[#0c0a17] text-gray-100 antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
