@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Tab, PaymentMethod, SplitMode, BillSplit } from '../../types/database.types';
 import {
   formatBRL,
@@ -164,9 +165,9 @@ export const BillSplitModal: React.FC<BillSplitModalProps> = ({
   const currentSplit = db.getTabById(tab.id)?.splits?.[0];
   const remainingTabBalance = calculateRemainingBalance(tab.total_cents, tab.discount_cents, tab.paid_cents);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-charcoal-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden my-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-charcoal-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden my-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-charcoal-850 via-charcoal-900 to-charcoal-850 p-4 sm:p-6 border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -586,6 +587,7 @@ export const BillSplitModal: React.FC<BillSplitModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

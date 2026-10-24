@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { RestaurantTable } from '../../types/database.types';
 import { X, Printer, ExternalLink, QrCode } from 'lucide-react';
@@ -19,9 +20,9 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ table, isOpen, onClose
     window.print();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-sm bg-charcoal-900 border border-gray-700 rounded-2xl p-6 shadow-2xl text-center space-y-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="relative w-full max-w-sm bg-charcoal-900 border border-gray-700 rounded-2xl p-6 shadow-2xl text-center space-y-4 my-auto">
         <button
           onClick={onClose}
           className="absolute right-4 top-4 p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition"
@@ -74,6 +75,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ table, isOpen, onClose
           </a>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

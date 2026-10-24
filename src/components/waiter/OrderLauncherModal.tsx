@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { RestaurantTable, Product, Tab } from '../../types/database.types';
 import { db } from '../../lib/databaseStore';
 import { useAuth } from '../../contexts/AuthContext';
@@ -171,8 +172,8 @@ export const OrderLauncherModal: React.FC<OrderLauncherModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/85 backdrop-blur-sm overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center sm:p-4 bg-black/85 backdrop-blur-sm overflow-hidden">
       <div className="relative w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-5xl bg-charcoal-900 sm:border border-gray-700 sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-3.5 sm:p-5 bg-charcoal-850 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
@@ -575,6 +576,7 @@ export const OrderLauncherModal: React.FC<OrderLauncherModalProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };

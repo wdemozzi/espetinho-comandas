@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Profile } from '../../types/database.types';
 import {
@@ -64,9 +65,9 @@ export const OperatorSwitchModal: React.FC<OperatorSwitchModalProps> = ({
     setPinInput((prev) => prev.slice(0, -1));
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-md bg-charcoal-900 border border-gray-700 rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-md bg-charcoal-900 border border-gray-700 rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 my-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-gray-800">
           <div className="flex items-center gap-2.5">
@@ -235,6 +236,7 @@ export const OperatorSwitchModal: React.FC<OperatorSwitchModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
