@@ -13,7 +13,17 @@ interface QrCodeModalProps {
 export const QrCodeModal: React.FC<QrCodeModalProps> = ({ table, isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+  const getBaseOrigin = () => {
+    if (typeof window === 'undefined') return 'http://localhost:5173';
+    const host = window.location.host;
+    // If on a Vercel git-branch preview, use the canonical public production domain
+    if (host.includes('-git-') && host.includes('.vercel.app')) {
+      return 'https://espetinho-comandas.vercel.app';
+    }
+    return window.location.origin;
+  };
+
+  const origin = getBaseOrigin();
   const tableQrUrl = `${origin}/?mesa=${table.qr_token}`;
 
   const handlePrint = () => {
