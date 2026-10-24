@@ -1,5 +1,5 @@
 import { getSupabaseClient, isSupabaseConfigured, getSupabaseDiagnostics } from './supabaseClient';
-import { Order, Tab, Profile, OrderStatus } from '../types/database.types';
+import { Order, Tab, Profile, Product, OrderStatus } from '../types/database.types';
 import { soundService } from './sound';
 
 type SyncCallback = {
@@ -11,6 +11,7 @@ type SyncCallback = {
     orders?: Order[];
     tabs?: Tab[];
     profiles?: Profile[];
+    products?: Product[];
   }) => void;
 };
 
@@ -126,6 +127,8 @@ class SupabaseSyncService {
               this.callbacks?.onFullSyncReceived({ tabs: row.data as Tab[] });
             } else if (row.id === 'profiles' && Array.isArray(row.data)) {
               this.callbacks?.onRemoteProfilesUpdated(row.data as Profile[]);
+            } else if (row.id === 'products' && Array.isArray(row.data)) {
+              this.callbacks?.onFullSyncReceived({ products: row.data as Product[] });
             }
             this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
@@ -218,7 +221,7 @@ class SupabaseSyncService {
   }
 
   // --- CLOUD PERSISTENCE VIA ct_cloud_sync TABLE ---
-  public async saveToCloud(id: 'orders' | 'tabs' | 'profiles', data: unknown) {
+  public async saveToCloud(id: 'orders' | 'tabs' | 'profiles' | 'products', data: unknown) {
     const client = getSupabaseClient();
     if (!client) return;
 
@@ -299,6 +302,7 @@ class SupabaseSyncService {
         orders?: Order[];
         tabs?: Tab[];
         profiles?: Profile[];
+        products?: Product[];
       } = {};
 
       for (const row of data) {
@@ -308,6 +312,8 @@ class SupabaseSyncService {
           fullData.tabs = row.data as Tab[];
         } else if (row.id === 'profiles' && Array.isArray(row.data)) {
           fullData.profiles = row.data as Profile[];
+        } else if (row.id === 'products' && Array.isArray(row.data)) {
+          fullData.products = row.data as Product[];
         }
       }
 

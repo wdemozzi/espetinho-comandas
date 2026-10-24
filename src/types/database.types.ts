@@ -70,6 +70,9 @@ export interface Product {
   allow_notes: boolean;
   created_at: string;
   addons?: ProductAddon[];
+  stock_quantity?: number;
+  track_stock?: boolean;
+  min_stock_alert?: number;
 }
 
 export interface RestaurantTable {
@@ -177,4 +180,15 @@ export interface Payment {
   created_at: string;
   recorded_by_name?: string;
   participant_name?: string;
+}
+
+export interface CustomerLead {
+  phone: string;
+  name: string;
+  orders_count: number;
+  total_spent_cents: number;
+  first_order_at: string;
+  last_order_at: string;
+  primary_channel: 'balcao' | 'mesa' | 'ambos';
+  order_history: { order_number: number; date: string; total_cents: number; type: string }[];
 }

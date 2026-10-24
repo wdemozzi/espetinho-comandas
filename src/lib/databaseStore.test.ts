@@ -83,4 +83,46 @@ describe('DatabaseStore & Persistence', () => {
     expect(cancelled.status).toBe('cancelled');
     expect(cancelled.items[0].status).toBe('cancelled');
   });
+
+  it('should automatically deduct stock on order and refund upon cancellation', () => {
+    const products = db.getProducts();
+    const product = products[0];
+    const initialStock = product.stock_quantity ?? 40;
+
+    const order = db.createOrder({
+      origin: 'table_qr',
+      order_type: 'dine_in',
+      customer_name: 'Marcos Teste Estoque',
+      customer_phone: '(44) 99888-1122',
+      items: [
+        {
+          product_id: product.id,
+          quantity: 3,
+          addons: [],
+        },
+      ],
+    });
+
+    const updatedProduct = db.getProducts().find((p) => p.id === product.id);
+    expect(updatedProduct?.stock_quantity).toBe(initialStock - 3);
+
+    // Cancel order and check refund
+    db.cancelPendingOrder(order.id, 'Cliente desistiu');
+    const refundedProduct = db.getProducts().find((p) => p.id === product.id);
+    expect(refundedProduct?.stock_quantity).toBe(initialStock);
+  });
+
+  it('should generate consolidated customer marketing leads', () => {
+    const leads = db.getCustomerLeads();
+    expect(Array.isArray(leads)).toBe(true);
+    expect(leads.length).toBeGreaterThan(0);
+
+    const lead = leads[0];
+    expect(lead).toHaveProperty('phone');
+    expect(lead).toHaveProperty('name');
+    expect(lead).toHaveProperty('orders_count');
+    expect(lead).toHaveProperty('total_spent_cents');
+    expect(lead).toHaveProperty('primary_channel');
+    expect(lead).toHaveProperty('order_history');
+  });
 });

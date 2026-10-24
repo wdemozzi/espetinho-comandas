@@ -14,6 +14,7 @@ import {
   PaymentMethod,
   SplitMode,
   ProductionSector,
+  CustomerLead,
 } from '../types/database.types';
 import { splitBillEqual, validateCustomSplit } from './currency';
 import { soundService } from './sound';
@@ -64,6 +65,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'churrasqueira',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 45,
+    track_stock: true,
+    min_stock_alert: 10,
     created_at: new Date().toISOString(),
     addons: [
       { id: 'a1', product_id: 'p1', name: 'Ponto: Mal passada', price_cents: 0, is_available: true, sort_order: 1 },
@@ -84,6 +88,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'churrasqueira',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 50,
+    track_stock: true,
+    min_stock_alert: 10,
     created_at: new Date().toISOString(),
     addons: [
       { id: 'a5', product_id: 'p2', name: 'Ponto: Ao ponto', price_cents: 0, is_available: true, sort_order: 1 },
@@ -102,6 +109,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'churrasqueira',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 35,
+    track_stock: true,
+    min_stock_alert: 8,
     created_at: new Date().toISOString(),
     addons: [
       { id: 'a7', product_id: 'p3', name: 'Melaço de Cana Extra (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 1 },
@@ -120,6 +130,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'churrasqueira',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 40,
+    track_stock: true,
+    min_stock_alert: 10,
     created_at: new Date().toISOString(),
   },
   {
@@ -134,6 +147,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'churrasqueira',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 30,
+    track_stock: true,
+    min_stock_alert: 8,
     created_at: new Date().toISOString(),
   },
   {
@@ -148,6 +164,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'churrasqueira',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 60,
+    track_stock: true,
+    min_stock_alert: 12,
     created_at: new Date().toISOString(),
   },
   {
@@ -162,6 +181,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'bar',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 72,
+    track_stock: true,
+    min_stock_alert: 15,
     created_at: new Date().toISOString(),
   },
   {
@@ -176,6 +198,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'bar',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 90,
+    track_stock: true,
+    min_stock_alert: 20,
     created_at: new Date().toISOString(),
   },
   {
@@ -190,6 +215,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'cozinha',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 25,
+    track_stock: true,
+    min_stock_alert: 5,
     created_at: new Date().toISOString(),
   },
   {
@@ -204,6 +232,9 @@ const INITIAL_PRODUCTS: Product[] = [
     sector: 'cozinha',
     is_available: true,
     allow_notes: true,
+    stock_quantity: 20,
+    track_stock: true,
+    min_stock_alert: 5,
     created_at: new Date().toISOString(),
   },
 ];
@@ -283,7 +314,12 @@ class DatabaseStore {
       if (storedProducts) {
         const parsed = JSON.parse(storedProducts);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          this.products = parsed;
+          this.products = parsed.map((p) => ({
+            ...p,
+            stock_quantity: typeof p.stock_quantity === 'number' ? p.stock_quantity : 40,
+            track_stock: p.track_stock !== undefined ? p.track_stock : true,
+            min_stock_alert: typeof p.min_stock_alert === 'number' ? p.min_stock_alert : 10,
+          }));
         }
       }
 
@@ -395,6 +431,9 @@ class DatabaseStore {
           const existingTabIds = new Set(this.tabs.map((t) => t.id));
           const newTabs = data.tabs.filter((t) => !existingTabIds.has(t.id));
           this.tabs = [...newTabs, ...this.tabs];
+        }
+        if (data.products && data.products.length > 0) {
+          this.products = data.products;
         }
         this.persist();
         this.notify();
@@ -662,6 +701,9 @@ class DatabaseStore {
         sector: productData.sector || 'churrasqueira',
         is_available: true,
         allow_notes: true,
+        stock_quantity: productData.stock_quantity ?? 40,
+        track_stock: productData.track_stock ?? true,
+        min_stock_alert: productData.min_stock_alert ?? 10,
         created_at: new Date().toISOString(),
         addons: productData.addons || [],
       };
@@ -669,6 +711,38 @@ class DatabaseStore {
     }
     this.persist();
     this.notify();
+    supabaseSync.saveToCloud('products', this.products);
+  }
+
+  // --- ACTIONS: STOCK CONTROL ---
+  public updateProductStock(productId: string, newStock: number) {
+    const prod = this.products.find((p) => p.id === productId);
+    if (!prod) return;
+    prod.stock_quantity = Math.max(0, newStock);
+    if (prod.stock_quantity === 0) {
+      prod.is_available = false;
+    } else if (!prod.is_available && prod.stock_quantity > 0) {
+      prod.is_available = true;
+    }
+    this.persist();
+    this.notify();
+    supabaseSync.saveToCloud('products', this.products);
+  }
+
+  public adjustProductStock(productId: string, delta: number) {
+    const prod = this.products.find((p) => p.id === productId);
+    if (!prod) return;
+    const current = typeof prod.stock_quantity === 'number' ? prod.stock_quantity : 40;
+    this.updateProductStock(productId, current + delta);
+  }
+
+  public toggleStockTracking(productId: string) {
+    const prod = this.products.find((p) => p.id === productId);
+    if (!prod) return;
+    prod.track_stock = prod.track_stock === false ? true : false;
+    this.persist();
+    this.notify();
+    supabaseSync.saveToCloud('products', this.products);
   }
 
   public saveTable(tableData: Partial<RestaurantTable>) {
@@ -815,6 +889,15 @@ class DatabaseStore {
       if (!product) throw new Error(`Produto não encontrado (ID: ${it.product_id})`);
       if (!product.is_available) throw new Error(`O item "${product.name}" não está disponível no momento`);
 
+      // Baixa automática no estoque do produto
+      if (product.track_stock !== false) {
+        const currentStock = typeof product.stock_quantity === 'number' ? product.stock_quantity : 40;
+        product.stock_quantity = Math.max(0, currentStock - it.quantity);
+        if (product.stock_quantity === 0) {
+          product.is_available = false;
+        }
+      }
+
       const unitPriceCents = product.price_cents;
       const addonsTotalCents = it.addons.reduce((acc, a) => acc + a.price_cents, 0);
       const itemTotalCents = (unitPriceCents + addonsTotalCents) * it.quantity;
@@ -905,6 +988,7 @@ class DatabaseStore {
     supabaseSync.broadcastOrder(newOrder, targetTab);
     supabaseSync.saveToCloud('orders', this.orders);
     supabaseSync.saveToCloud('tabs', this.tabs);
+    supabaseSync.saveToCloud('products', this.products);
 
     return newOrder;
   }
@@ -934,6 +1018,7 @@ class DatabaseStore {
 
   /**
    * Cancels a pending online order (Anti-Trote / fake order / rejected)
+   * Automatically restores stock for all items
    */
   public cancelPendingOrder(orderId: string, reason?: string): Order {
     const order = this.orders.find((o) => o.id === orderId);
@@ -943,14 +1028,26 @@ class DatabaseStore {
     if (reason) {
       order.general_notes = `${order.general_notes ? order.general_notes + ' | ' : ''}Cancelado: ${reason}`;
     }
+
+    // Estorno automático do estoque dos itens cancelados
     for (const item of order.items) {
       item.status = 'cancelled';
+      if (item.product_id) {
+        const prod = this.products.find((p) => p.id === item.product_id);
+        if (prod && prod.track_stock !== false) {
+          prod.stock_quantity = (typeof prod.stock_quantity === 'number' ? prod.stock_quantity : 0) + item.quantity;
+          if (prod.stock_quantity > 0) {
+            prod.is_available = true;
+          }
+        }
+      }
     }
 
     this.persist();
     this.notify();
     supabaseSync.broadcastOrder(order);
     supabaseSync.saveToCloud('orders', this.orders);
+    supabaseSync.saveToCloud('products', this.products);
     return order;
   }
 
@@ -1227,6 +1324,134 @@ class DatabaseStore {
     supabaseSync.broadcastTab(tab);
     supabaseSync.saveToCloud('tabs', this.tabs);
     return tab;
+  }
+
+  // --- CRM & MARKETING: CUSTOMER LEADS ---
+  public getCustomerLeads(): CustomerLead[] {
+    const customerMap = new Map<string, {
+      phone: string;
+      name: string;
+      orders_count: number;
+      total_spent_cents: number;
+      first_order_at: string;
+      last_order_at: string;
+      channels: Set<string>;
+      history: { order_number: number; date: string; total_cents: number; type: string }[];
+    }>();
+
+    const registerEntry = (
+      rawName: string | null | undefined,
+      rawPhone: string | null | undefined,
+      orderNumber: number,
+      date: string,
+      totalCents: number,
+      channel: 'balcao' | 'mesa'
+    ) => {
+      const cleanPhone = (rawPhone || '').replace(/\D/g, '');
+      const cleanName = (rawName || '').trim();
+      if (!cleanPhone && (!cleanName || cleanName.toLowerCase().includes('mesa') || cleanName.toLowerCase().includes('comanda'))) {
+        return;
+      }
+
+      const key = cleanPhone || cleanName.toLowerCase();
+      let lead = customerMap.get(key);
+      if (!lead) {
+        lead = {
+          phone: rawPhone ? rawPhone.trim() : '',
+          name: cleanName || 'Cliente',
+          orders_count: 0,
+          total_spent_cents: 0,
+          first_order_at: date,
+          last_order_at: date,
+          channels: new Set(),
+          history: [],
+        };
+        customerMap.set(key, lead);
+      }
+
+      if (cleanName && (!lead.name || lead.name === 'Cliente' || lead.name.length < cleanName.length)) {
+        lead.name = cleanName.replace(/\s*\([^)]*\)/g, '').trim();
+      }
+
+      if (rawPhone && !lead.phone) {
+        lead.phone = rawPhone.trim();
+      }
+
+      lead.orders_count += 1;
+      lead.total_spent_cents += totalCents;
+      lead.channels.add(channel);
+      lead.history.push({
+        order_number: orderNumber,
+        date,
+        total_cents: totalCents,
+        type: channel === 'balcao' ? 'Balcão / Retirada' : 'Mesa Salão',
+      });
+
+      if (new Date(date).getTime() < new Date(lead.first_order_at).getTime()) {
+        lead.first_order_at = date;
+      }
+      if (new Date(date).getTime() > new Date(lead.last_order_at).getTime()) {
+        lead.last_order_at = date;
+      }
+    };
+
+    // 1. Non-cancelled orders
+    for (const order of this.orders) {
+      if (order.status === 'cancelled') continue;
+      const channel = order.order_type === 'takeout' || order.order_type === 'delivery' ? 'balcao' : 'mesa';
+      registerEntry(
+        order.customer_name,
+        order.customer_phone,
+        order.order_number,
+        order.created_at,
+        order.total_cents,
+        channel
+      );
+    }
+
+    // 2. Tabs
+    for (const tab of this.tabs) {
+      if (tab.status === 'cancelled') continue;
+      if (tab.customer_name || tab.customer_phone) {
+        const channel = tab.table_id ? 'mesa' : 'balcao';
+        const cleanPhone = (tab.customer_phone || '').replace(/\D/g, '');
+        const cleanName = (tab.customer_name || '').trim();
+        const key = cleanPhone || cleanName.toLowerCase();
+
+        if (!customerMap.has(key) && (cleanPhone || (cleanName && !cleanName.toLowerCase().includes('mesa')))) {
+          registerEntry(
+            tab.customer_name,
+            tab.customer_phone,
+            0,
+            tab.opened_at,
+            tab.paid_cents || tab.total_cents,
+            channel
+          );
+        }
+      }
+    }
+
+    const leads: CustomerLead[] = Array.from(customerMap.values()).map((item) => {
+      let primary_channel: 'balcao' | 'mesa' | 'ambos' = 'balcao';
+      if (item.channels.has('balcao') && item.channels.has('mesa')) {
+        primary_channel = 'ambos';
+      } else if (item.channels.has('mesa')) {
+        primary_channel = 'mesa';
+      }
+
+      return {
+        phone: item.phone,
+        name: item.name,
+        orders_count: item.orders_count,
+        total_spent_cents: item.total_spent_cents,
+        first_order_at: item.first_order_at,
+        last_order_at: item.last_order_at,
+        primary_channel,
+        order_history: item.history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      };
+    });
+
+    return leads.sort((a, b) => new Date(b.last_order_at).getTime() - new Date(a.last_order_at).getTime());
   }
 }
 
