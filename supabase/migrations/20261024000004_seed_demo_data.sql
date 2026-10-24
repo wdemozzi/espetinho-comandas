@@ -29,7 +29,7 @@ BEGIN
         'Espetinho Raiz & Brasa',
         'espetinho-raiz',
         'O autêntico espetinho na brasa com carnes nobres selecionadas, acompanhamentos da casa e cerveja trincando.',
-        '(44) 99876-5432',
+        '(44) 99735-7463',
         'Av. Paraná, 1250 - Centro',
         'Terça a Domingo das 18h às 00h'
     ) ON CONFLICT (id) DO NOTHING;

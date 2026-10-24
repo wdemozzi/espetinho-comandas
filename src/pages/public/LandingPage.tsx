@@ -258,7 +258,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Quick CTAs */}
           <div className="flex items-center gap-3">
             <a
-              href="https://wa.me/5544998765432?text=Ol%C3%A1%2C%20gostaria%20de%20fazer%20um%20pedido%20na%20CT%20Conveni%C3%AAncia!"
+              href="https://wa.me/5544997357463?text=Ol%C3%A1%2C%20gostaria%20de%20fazer%20um%20pedido%20na%20CT%20Conveni%C3%AAncia!"
               target="_blank"
               rel="noreferrer"
               className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-700/60 text-xs font-bold transition shadow-sm"
@@ -328,7 +328,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </a>
 
                 <a
-                  href="https://wa.me/5544998765432"
+                  href="https://wa.me/5544997357463"
                   target="_blank"
                   rel="noreferrer"
                   className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-200 font-bold text-sm border border-gray-700 flex items-center justify-center gap-2 transition"
@@ -696,7 +696,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <div className="pt-2">
                   <a
-                    href="https://wa.me/5544998765432"
+                    href="https://wa.me/5544997357463"
                     target="_blank"
                     rel="noreferrer"
                     className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-600/30"
@@ -775,7 +775,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Direct WhatsApp Contact */}
           <div>
             <a
-              href="https://wa.me/5544998765432?text=Ol%C3%A1%2C%20gostaria%20de%20tirar%20uma%20d%C3%BAvida%20na%20CT%20Conveni%C3%AAncia!"
+              href="https://wa.me/5544997357463?text=Ol%C3%A1%2C%20gostaria%20de%20tirar%20uma%20d%C3%BAvida%20na%20CT%20Conveni%C3%AAncia!"
               target="_blank"
               rel="noreferrer"
               className="px-4 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 text-xs font-bold transition flex items-center gap-2"
@@ -1098,7 +1098,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Direct WhatsApp Button */}
             <a
-              href={`https://wa.me/5544998765432?text=${encodeURIComponent(
+              href={`https://wa.me/5544997357463?text=${encodeURIComponent(
                 `Olá CT Conveniência! Acabei de fazer o Pedido #${submittedOrder.order_number} para retirada no balcão no nome de ${submittedOrder.customer_name}.\nTotal: ${formatBRL(submittedOrder.total_cents)}.\nGostaria de confirmar para vocês começarem a assar na churrasqueira!`
               )}`}
               target="_blank"
@@ -1116,7 +1116,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText('44998765432');
+                    navigator.clipboard.writeText('44997357463');
                     setCopiedPix(true);
                     setTimeout(() => setCopiedPix(false), 3000);
                   }}
@@ -1127,7 +1127,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </button>
               </div>
               <code className="block bg-charcoal-900 p-2 rounded-xl text-cyan-300 font-mono text-xs select-all border border-gray-800">
-                (44) 99876-5432
+                (44) 99735-7463
               </code>
               <p className="text-[11px] text-gray-500">
                 Você pode adiantar o pagamento via Pix e enviar o comprovante no WhatsApp, ou pagar no balcão ao retirar.

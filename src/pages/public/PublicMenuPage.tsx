@@ -619,7 +619,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
 
             {!table && (
               <a
-                href={`https://wa.me/5544998765432?text=${encodeURIComponent(
+                href={`https://wa.me/5544997357463?text=${encodeURIComponent(
                   `Olá CT Conveniência! Acabei de fazer o Pedido #${orderSuccessId} no nome de ${customerName}. Gostaria de confirmar para começarem a assar!`
                 )}`}
                 target="_blank"
