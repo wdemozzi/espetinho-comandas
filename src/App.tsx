@@ -74,7 +74,7 @@ function AppContent() {
         <footer className="bg-charcoal-900 border-t border-gray-800/80 py-4 px-6 text-center text-xs text-gray-500">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
             <p>
-              Espetinho Comandas © {new Date().getFullYear()} • Sistema Operacional para Espetinhos e Restaurantes
+              CT Conveniência © {new Date().getFullYear()} • Sistema de Comandas & Atendimento
             </p>
             <p className="text-[11px] text-gray-600">
               Piloto Comercial Full-Stack • React + Vite + Tailwind + Supabase PostgreSQL

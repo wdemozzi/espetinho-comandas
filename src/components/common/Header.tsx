@@ -73,21 +73,27 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
     <header className="sticky top-0 z-40 bg-charcoal-900/95 backdrop-blur border-b border-gray-800">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-2">
-          {/* Brand (Clean, single-line, zero wrapping) */}
+          {/* Brand with CT Conveniência Logo */}
           <div
-            className="flex items-center gap-2.5 cursor-pointer flex-shrink-0"
+            className="flex items-center gap-3 cursor-pointer flex-shrink-0 group"
             onClick={() => onNavigate('garcom')}
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-ember-700 via-ember-500 to-amber-400 flex items-center justify-center shadow-lg shadow-ember-600/20 text-white font-extrabold flex-shrink-0">
-              <Flame className="w-5 h-5 animate-pulse" />
+            <div className="relative">
+              <img
+                src="/ct-logo.png"
+                alt="CT Conveniência"
+                className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-purple-600/40 border border-purple-500/40 bg-charcoal-950 p-0.5 flex-shrink-0 transition-transform group-hover:scale-105"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-charcoal-900" />
             </div>
             <div>
-              <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-white via-gray-200 to-ember-400 bg-clip-text text-transparent whitespace-nowrap block">
-                Espetinho Comandas
+              <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent whitespace-nowrap block">
+                CT Conveniência
               </span>
               <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping flex-shrink-0" />
-                <span className="font-mono text-gray-400">{time}</span>
+                <span className="text-gray-400 font-medium">Gestão & Comandas</span>
+                <span>•</span>
+                <span className="font-mono text-purple-300 font-semibold">{time}</span>
               </div>
             </div>
           </div>

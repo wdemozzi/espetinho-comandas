@@ -185,17 +185,22 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0e12] text-gray-100 pb-24">
+    <div className="min-h-screen bg-[#0c0a17] text-gray-100 pb-24">
       {/* Hero / Brand Banner */}
       <div className="relative bg-gradient-to-b from-charcoal-850 to-charcoal-900 border-b border-gray-800 p-5 sm:p-8">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-ember-600 to-amber-400 flex items-center justify-center text-white shadow-xl shadow-ember-600/30 flex-shrink-0">
-            <Flame className="w-9 h-9" />
+          <div className="relative">
+            <img
+              src="/ct-logo.png"
+              alt={establishment.name}
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-contain shadow-2xl shadow-purple-600/50 border-2 border-purple-500/40 bg-charcoal-950 p-1 flex-shrink-0"
+            />
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-charcoal-900" />
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              {establishment.name}
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center justify-center sm:justify-start gap-2">
+              <span>{establishment.name}</span>
             </h1>
             <p className="text-xs sm:text-sm text-gray-400 max-w-xl">{establishment.description}</p>
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1 text-xs text-gray-400">
@@ -238,7 +243,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       </div>
 
       {/* Categories Sticky Bar */}
-      <div className="sticky top-0 z-30 bg-[#0d0e12]/95 backdrop-blur border-b border-gray-800 py-3 px-4">
+      <div className="sticky top-0 z-30 bg-[#0c0a17]/95 backdrop-blur border-b border-gray-800 py-3 px-4">
         <div className="max-w-4xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar">
           {categories.map((cat: Category) => (
             <button

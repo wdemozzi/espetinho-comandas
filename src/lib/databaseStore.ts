@@ -18,17 +18,17 @@ import {
 import { splitBillEqual, validateCustomSplit } from './currency';
 import { soundService } from './sound';
 
-// Initial Seed Data mirroring Migration 004
+// Initial Seed Data for CT Conveniência
 const INITIAL_ESTABLISHMENT: Establishment = {
   id: 'a0000000-0000-0000-0000-000000000001',
-  name: 'Espetinho Raiz & Brasa',
-  slug: 'espetinho-raiz',
-  description: 'O autêntico espetinho na brasa com carnes nobres selecionadas, acompanhamentos da casa e cerveja trincando.',
+  name: 'CT Conveniência',
+  slug: 'ct-conveniencia',
+  description: 'Conveniência completa, cervejas trincando, drinks, espetinhos nobres na brasa e porções.',
   phone: '(44) 99876-5432',
   address: 'Av. Paraná, 1250 - Centro',
-  opening_hours: 'Terça a Domingo das 18h às 00h',
-  logo_url: null,
-  banner_url: null,
+  opening_hours: 'Todos os dias das 16h às 02h',
+  logo_url: '/ct-logo.png',
+  banner_url: '/ct-logo.png',
   is_active: true,
   created_at: new Date().toISOString(),
 };
