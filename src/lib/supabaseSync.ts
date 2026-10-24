@@ -223,10 +223,36 @@ class SupabaseSyncService {
     if (!client) return;
 
     try {
+      let finalData = data;
+
+      // If saving array of orders or tabs, merge with existing cloud records to prevent a new mobile client from overwriting computer orders
+      if (Array.isArray(data)) {
+        try {
+          const { data: remoteRow } = await client
+            .from('ct_cloud_sync')
+            .select('data')
+            .eq('id', id)
+            .maybeSingle();
+
+          if (remoteRow && Array.isArray(remoteRow.data)) {
+            const map = new Map<string, any>();
+            for (const item of remoteRow.data) {
+              if (item && item.id) map.set(item.id, item);
+            }
+            for (const item of data) {
+              if (item && item.id) map.set(item.id, item);
+            }
+            finalData = Array.from(map.values());
+          }
+        } catch {
+          // Fallback to sending data directly if read fails
+        }
+      }
+
       const { error } = await client.from('ct_cloud_sync').upsert(
         {
           id,
-          data,
+          data: finalData,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'id' }

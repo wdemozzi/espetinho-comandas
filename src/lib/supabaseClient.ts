@@ -24,15 +24,19 @@ const getStoredKey = (): string => {
 export const DEFAULT_SUPABASE_URL = 'https://ogldhoxfbjhgvwpjocoj.supabase.co';
 
 export const getSupabaseUrl = (): string => {
-  return import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const envUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  return envUrl
+    .trim()
+    .replace(/\/rest\/v1\/?$/i, '')
+    .replace(/\/+$/, '') || DEFAULT_SUPABASE_URL;
 };
 
 export const getSupabaseAnonKey = (): string => {
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   if (envKey && envKey !== 'SEU_ANON_KEY_AQUI' && envKey !== 'your-anon-key-here') {
-    return envKey;
+    return envKey.trim().replace(/^["']|["']$/g, '').trim();
   }
-  return getStoredKey();
+  return getStoredKey().trim().replace(/^["']|["']$/g, '').trim();
 };
 
 export const isSupabaseConfigured = (): boolean => {
