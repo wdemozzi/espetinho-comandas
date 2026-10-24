@@ -86,6 +86,8 @@ export interface RestaurantTable {
   is_active: boolean;
   created_at: string;
   active_tab?: Tab;
+  linked_table_id?: string | null;
+  linked_table_label?: string | null;
 }
 
 export interface Tab {
@@ -108,6 +110,8 @@ export interface Tab {
   orders?: Order[];
   payments?: Payment[];
   splits?: BillSplit[];
+  joined_table_ids?: string[];
+  joined_table_labels?: string[];
 }
 
 export interface OrderItem {

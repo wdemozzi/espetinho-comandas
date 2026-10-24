@@ -15,6 +15,7 @@ import {
   SplitMode,
   ProductionSector,
   CustomerLead,
+  TableStatus,
 } from '../types/database.types';
 import { splitBillEqual, validateCustomSplit } from './currency';
 import { soundService } from './sound';
@@ -594,9 +595,20 @@ class DatabaseStore {
 
   public getTables(): RestaurantTable[] {
     return this.tables.map((table) => {
-      const active_tab = this.tabs.find((t) => t.table_id === table.id && t.status === 'open');
+      // Direct open tab for this table
+      let active_tab = this.tabs.find((t) => t.table_id === table.id && t.status === 'open');
+
+      // If table is joined to another table
+      if (!active_tab && table.linked_table_id) {
+        active_tab = this.tabs.find((t) => t.table_id === table.linked_table_id && t.status === 'open');
+      }
+
+      const isOccupied = !!active_tab || !!table.linked_table_id;
+      const status: TableStatus = isOccupied ? 'ocupada' : 'livre';
+
       return {
         ...table,
+        status,
         active_tab,
       };
     });
@@ -822,7 +834,7 @@ class DatabaseStore {
     }
 
     const newTab: Tab = {
-      id: `tab-${Date.now()}`,
+      id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       establishment_id: this.establishment.id,
       table_id: table ? table.id : null,
       opened_by: params.opened_by_user_id,
@@ -853,6 +865,272 @@ class DatabaseStore {
     supabaseSync.broadcastTab(newTab);
     supabaseSync.saveToCloud('tabs', this.tabs);
     return newTab;
+  }
+
+  /**
+   * Transfere uma comanda ativa de uma mesa para outra mesa livre.
+   * Atualiza a mesa de origem para 'livre', a nova mesa para 'ocupada',
+   * atualiza a referência na comanda e o table_number de todos os pedidos ativos.
+   */
+  public transferTabToTable(tabId: string, targetTableId: string): { success: boolean; message: string } {
+    const tab = this.tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada');
+    if (tab.status !== 'open') throw new Error('Apenas comandas abertas podem ser transferidas');
+
+    const targetTable = this.tables.find((t) => t.id === targetTableId);
+    if (!targetTable) throw new Error('Mesa de destino não encontrada');
+
+    // Verifica se a mesa de destino já possui comanda ativa
+    const targetOccupiedTab = this.tabs.find((t) => t.table_id === targetTableId && t.status === 'open');
+    if (targetOccupiedTab && targetOccupiedTab.id !== tabId) {
+      throw new Error(`A ${targetTable.label} já está ocupada por outra comanda ativa.`);
+    }
+
+    if (tab.table_id === targetTableId) {
+      throw new Error(`A comanda já está na ${targetTable.label}.`);
+    }
+
+    const sourceTable = this.tables.find((t) => t.id === tab.table_id);
+    const sourceLabel = sourceTable ? sourceTable.label : 'Mesa anterior';
+
+    // 1. Atualizar comanda para a nova mesa
+    tab.table_id = targetTable.id;
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const logMsg = `[Transferência] Mudou de ${sourceLabel} para ${targetTable.label} às ${nowTime}`;
+    tab.notes = tab.notes ? `${tab.notes}\n${logMsg}` : logMsg;
+
+    // 2. Atualizar o número da mesa em todos os pedidos dessa comanda
+    if (tab.orders) {
+      tab.orders.forEach((o) => {
+        o.table_number = targetTable.table_number;
+        const globalOrder = this.orders.find((ord) => ord.id === o.id);
+        if (globalOrder) {
+          globalOrder.table_number = targetTable.table_number;
+        }
+      });
+    }
+
+    // 3. Liberar a mesa de origem
+    if (sourceTable) {
+      sourceTable.status = 'livre';
+      sourceTable.active_tab = undefined;
+    }
+
+    // 4. Ocupar a mesa de destino
+    targetTable.status = 'ocupada';
+    targetTable.active_tab = tab;
+    targetTable.linked_table_id = null;
+    targetTable.linked_table_label = null;
+
+    // 5. Se haviam mesas secundárias ligadas à mesa anterior, repassa o vínculo para a nova mesa
+    this.tables.forEach((t) => {
+      if (sourceTable && t.linked_table_id === sourceTable.id) {
+        t.linked_table_id = targetTable.id;
+        t.linked_table_label = `Junta à ${targetTable.label}`;
+      }
+    });
+
+    soundService.playSuccessDing();
+    this.persist();
+    this.notify();
+
+    // Sincronizar em tempo real com todos os dispositivos
+    supabaseSync.broadcastTab(tab);
+    supabaseSync.saveToCloud('tabs', this.tabs);
+    supabaseSync.saveToCloud('orders', this.orders);
+
+    return {
+      success: true,
+      message: `Comanda transferida com sucesso da ${sourceLabel} para ${targetTable.label}!`,
+    };
+  }
+
+  /**
+   * Junta uma mesa livre a uma mesa principal com comanda ativa (puxar mesa).
+   * A mesa secundária fica ocupada e vinculada à principal, sem criar uma segunda conta.
+   */
+  public linkTableToTab(tabId: string, secondaryTableId: string): { success: boolean; message: string } {
+    const tab = this.tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada');
+    if (tab.status !== 'open') throw new Error('A comanda precisa estar aberta');
+
+    const primaryTable = this.tables.find((t) => t.id === tab.table_id);
+    if (!primaryTable) throw new Error('A comanda principal não possui mesa associada');
+
+    const secondaryTable = this.tables.find((t) => t.id === secondaryTableId);
+    if (!secondaryTable) throw new Error('Mesa secundária não encontrada');
+
+    if (secondaryTable.id === primaryTable.id) {
+      throw new Error('Não é possível juntar a mesa com ela mesma');
+    }
+
+    // Verifica se a secundária tem comanda ativa aberta
+    const existingTab = this.tabs.find((t) => t.table_id === secondaryTableId && t.status === 'open');
+    if (existingTab) {
+      throw new Error(`A ${secondaryTable.label} possui uma comanda ativa. Utilize a opção "Fundir Contas" para unir o consumo.`);
+    }
+
+    secondaryTable.status = 'ocupada';
+    secondaryTable.linked_table_id = primaryTable.id;
+    secondaryTable.linked_table_label = `Junta à ${primaryTable.label}`;
+
+    if (!tab.joined_table_ids) tab.joined_table_ids = [];
+    if (!tab.joined_table_labels) tab.joined_table_labels = [];
+
+    if (!tab.joined_table_ids.includes(secondaryTable.id)) {
+      tab.joined_table_ids.push(secondaryTable.id);
+      tab.joined_table_labels.push(secondaryTable.label);
+    }
+
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const logMsg = `[Mesa Juntada] ${secondaryTable.label} puxada e unida à ${primaryTable.label} às ${nowTime}`;
+    tab.notes = tab.notes ? `${tab.notes}\n${logMsg}` : logMsg;
+
+    soundService.playSuccessDing();
+    this.persist();
+    this.notify();
+
+    supabaseSync.broadcastTab(tab);
+    supabaseSync.saveToCloud('tabs', this.tabs);
+
+    return {
+      success: true,
+      message: `${secondaryTable.label} juntada com sucesso à ${primaryTable.label}!`,
+    };
+  }
+
+  /**
+   * Desmembra/desvincula uma mesa que havia sido juntada anteriormente, liberando-a.
+   */
+  public unlinkTableFromTab(tabId: string, secondaryTableId: string): { success: boolean; message: string } {
+    const tab = this.tabs.find((t) => t.id === tabId);
+    const secondaryTable = this.tables.find((t) => t.id === secondaryTableId);
+
+    if (secondaryTable) {
+      secondaryTable.status = 'livre';
+      secondaryTable.linked_table_id = null;
+      secondaryTable.linked_table_label = null;
+      secondaryTable.active_tab = undefined;
+    }
+
+    if (tab) {
+      if (tab.joined_table_ids) {
+        tab.joined_table_ids = tab.joined_table_ids.filter((id) => id !== secondaryTableId);
+      }
+      if (tab.joined_table_labels && secondaryTable) {
+        tab.joined_table_labels = tab.joined_table_labels.filter((lbl) => lbl !== secondaryTable.label);
+      }
+      const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const logMsg = `[Mesa Desmembrada] ${secondaryTable?.label || 'Mesa'} liberada às ${nowTime}`;
+      tab.notes = tab.notes ? `${tab.notes}\n${logMsg}` : logMsg;
+    }
+
+    soundService.playSuccessDing();
+    this.persist();
+    this.notify();
+
+    if (tab) {
+      supabaseSync.broadcastTab(tab);
+      supabaseSync.saveToCloud('tabs', this.tabs);
+    }
+
+    return {
+      success: true,
+      message: `${secondaryTable?.label || 'Mesa'} desmembrada e liberada com sucesso!`,
+    };
+  }
+
+  /**
+   * Une e funde duas comandas abertas ativas em uma única comanda.
+   * Migra todas as rodadas e pedidos da sourceTab para a targetTab,
+   * recalcula o total somado, finaliza a sourceTab como fundida,
+   * e opcionalmente mantém a mesa de origem juntada à principal.
+   */
+  public mergeTabs(sourceTabId: string, targetTabId: string, keepTableJoined: boolean = true): { success: boolean; message: string } {
+    if (sourceTabId === targetTabId) {
+      throw new Error('Não é possível fundir uma comanda nela mesma');
+    }
+
+    const sourceTab = this.tabs.find((t) => t.id === sourceTabId);
+    const targetTab = this.tabs.find((t) => t.id === targetTabId);
+
+    if (!sourceTab || !targetTab) {
+      throw new Error('Comanda de origem ou destino não encontrada');
+    }
+    if (sourceTab.status !== 'open' || targetTab.status !== 'open') {
+      throw new Error('Ambas as comandas devem estar abertas para fusão');
+    }
+
+    const sourceTable = this.tables.find((t) => t.id === sourceTab.table_id);
+    const targetTable = this.tables.find((t) => t.id === targetTab.table_id);
+
+    // 1. Migrar todos os pedidos da sourceTab para a targetTab
+    if (!targetTab.orders) targetTab.orders = [];
+    const sourceOrders = sourceTab.orders || [];
+
+    for (const order of sourceOrders) {
+      // Atualiza table_number do pedido para a mesa de destino
+      if (targetTable) {
+        order.table_number = targetTable.table_number;
+        const globalOrder = this.orders.find((o) => o.id === order.id);
+        if (globalOrder) {
+          globalOrder.table_number = targetTable.table_number;
+        }
+      }
+      targetTab.orders.push(order);
+    }
+
+    // 2. Atualizar totais e histórico da comanda de destino
+    const mergedAmount = sourceTab.total_cents;
+    targetTab.total_cents += mergedAmount;
+
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const targetLog = `[Fusão de Contas] Unida com ${sourceTable?.label || 'outra mesa'} (+R$ ${(mergedAmount / 100).toFixed(2)}) às ${nowTime}`;
+    targetTab.notes = targetTab.notes ? `${targetTab.notes}\n${targetLog}` : targetLog;
+
+    // 3. Encerrar a comanda de origem como incorporada/fundida
+    sourceTab.status = 'cancelled';
+    sourceTab.notes = `Comanda fundida e transferida para ${targetTable?.label || 'Mesa Principal'} (#${targetTab.id}) às ${nowTime}`;
+    sourceTab.closed_at = new Date().toISOString();
+
+    // 4. Configurar a mesa de origem
+    if (sourceTable) {
+      if (keepTableJoined && targetTable) {
+        // Mantém a mesa de origem ocupada e vinculada à mesa de destino
+        sourceTable.status = 'ocupada';
+        sourceTable.linked_table_id = targetTable.id;
+        sourceTable.linked_table_label = `Junta à ${targetTable.label}`;
+        sourceTable.active_tab = undefined;
+
+        if (!targetTab.joined_table_ids) targetTab.joined_table_ids = [];
+        if (!targetTab.joined_table_labels) targetTab.joined_table_labels = [];
+        if (!targetTab.joined_table_ids.includes(sourceTable.id)) {
+          targetTab.joined_table_ids.push(sourceTable.id);
+          targetTab.joined_table_labels.push(sourceTable.label);
+        }
+      } else {
+        // Libera a mesa de origem
+        sourceTable.status = 'livre';
+        sourceTable.active_tab = undefined;
+        sourceTable.linked_table_id = null;
+        sourceTable.linked_table_label = null;
+      }
+    }
+
+    soundService.playSuccessDing();
+    this.persist();
+    this.notify();
+
+    // Sincronizar tudo no cloud
+    supabaseSync.broadcastTab(targetTab);
+    supabaseSync.broadcastTab(sourceTab);
+    supabaseSync.saveToCloud('tabs', this.tabs);
+    supabaseSync.saveToCloud('orders', this.orders);
+
+    return {
+      success: true,
+      message: `Comandas fundidas com sucesso! Saldo total atualizado na ${targetTable?.label || 'Mesa Principal'}.`,
+    };
   }
 
   // --- ACTIONS: ORDERS ---
@@ -1309,14 +1587,20 @@ class DatabaseStore {
     tab.closed_at = new Date().toISOString();
     tab.closed_by = closedByUserId;
 
-    // Free table
-    if (tab.table_id) {
-      const table = this.tables.find((t) => t.id === tab.table_id);
-      if (table) {
-        table.status = 'livre';
-        table.active_tab = undefined;
+    // Free primary table and any joined/linked tables
+    const primaryTableId = tab.table_id;
+    this.tables.forEach((t) => {
+      if (
+        t.id === primaryTableId ||
+        (primaryTableId && t.linked_table_id === primaryTableId) ||
+        tab.joined_table_ids?.includes(t.id)
+      ) {
+        t.status = 'livre';
+        t.active_tab = undefined;
+        t.linked_table_id = null;
+        t.linked_table_label = null;
       }
-    }
+    });
 
     soundService.playSuccessDing();
     this.persist();

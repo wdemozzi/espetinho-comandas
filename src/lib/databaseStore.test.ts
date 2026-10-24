@@ -125,4 +125,117 @@ describe('DatabaseStore & Persistence', () => {
     expect(lead).toHaveProperty('primary_channel');
     expect(lead).toHaveProperty('order_history');
   });
+
+  it('should transfer an active tab to a free table, updating table statuses and orders', () => {
+    // Open a tab on Mesa 08 (t8)
+    const table8 = db.getTableById('t8')!;
+    const table9 = db.getTableById('t9')!; // free table
+    expect(table8.status).toBe('livre');
+    expect(table9.status).toBe('livre');
+
+    const tab = db.openTab({
+      table_id: table8.id,
+      opened_by_user_id: 'u-1',
+      customer_name: 'Cliente Transferencia',
+    });
+
+    const products = db.getProducts();
+    const order = db.createOrder({
+      tab_id: tab.id,
+      origin: 'waiter',
+      order_type: 'dine_in',
+      items: [{ product_id: products[0].id, quantity: 1, addons: [] }],
+    });
+    expect(order.table_number).toBe(8);
+
+    // Transfer tab to Mesa 09
+    const res = db.transferTabToTable(tab.id, table9.id);
+    expect(res.success).toBe(true);
+
+    const updatedTable8 = db.getTableById('t8')!;
+    const updatedTable9 = db.getTableById('t9')!;
+    expect(updatedTable8.status).toBe('livre');
+    expect(updatedTable9.status).toBe('ocupada');
+    expect(updatedTable9.active_tab?.id).toBe(tab.id);
+
+    // Check order table_number updated
+    const updatedOrder = db.getOrderById(order.id);
+    expect(updatedOrder?.table_number).toBe(9);
+  });
+
+  it('should link and unlink a free table to an active tab', () => {
+    // Open a tab on Mesa 07 (t7)
+    const table7 = db.getTableById('t7')!;
+    const table6 = db.getTableById('t6')!; // free table
+
+    const tab = db.openTab({
+      table_id: table7.id,
+      opened_by_user_id: 'u-1',
+      customer_name: 'Grupo Grande',
+    });
+
+    // Link Mesa 06 to Mesa 07's tab
+    const linkRes = db.linkTableToTab(tab.id, table6.id);
+    expect(linkRes.success).toBe(true);
+
+    const updatedTable6 = db.getTableById('t6')!;
+    expect(updatedTable6.status).toBe('ocupada');
+    expect(updatedTable6.linked_table_id).toBe(table7.id);
+
+    // Unlink Mesa 06
+    const unlinkRes = db.unlinkTableFromTab(tab.id, table6.id);
+    expect(unlinkRes.success).toBe(true);
+
+    const freedTable6 = db.getTableById('t6')!;
+    expect(freedTable6.status).toBe('livre');
+    expect(freedTable6.linked_table_id).toBeFalsy();
+  });
+
+  it('should merge two active tabs into one, combining orders and totals', () => {
+    const table4 = db.getTableById('t4')!;
+    const table5 = db.getTableById('t5')!;
+
+    const tabA = db.openTab({
+      table_id: table4.id,
+      opened_by_user_id: 'u-1',
+      customer_name: 'Mesa 4 Grupo A',
+    });
+
+    const tabB = db.openTab({
+      table_id: table5.id,
+      opened_by_user_id: 'u-1',
+      customer_name: 'Mesa 5 Grupo B',
+    });
+
+    const product = db.getProducts()[0];
+    db.createOrder({
+      tab_id: tabA.id,
+      origin: 'waiter',
+      order_type: 'dine_in',
+      items: [{ product_id: product.id, quantity: 2, addons: [] }],
+    });
+    db.createOrder({
+      tab_id: tabB.id,
+      origin: 'waiter',
+      order_type: 'dine_in',
+      items: [{ product_id: product.id, quantity: 3, addons: [] }],
+    });
+
+    const totalA = db.getTabById(tabA.id)!.total_cents;
+    const totalB = db.getTabById(tabB.id)!.total_cents;
+
+    // Merge Tab B into Tab A
+    const mergeRes = db.mergeTabs(tabB.id, tabA.id, true);
+    expect(mergeRes.success).toBe(true);
+
+    const mergedTabA = db.getTabById(tabA.id)!;
+    expect(mergedTabA.total_cents).toBe(totalA + totalB);
+
+    const closedTabB = db.getTabById(tabB.id)!;
+    expect(closedTabB.status).toBe('cancelled');
+
+    // Table 5 is joined to Table 4
+    const updatedTable5 = db.getTableById('t5')!;
+    expect(updatedTable5.linked_table_id).toBe(table4.id);
+  });
 });

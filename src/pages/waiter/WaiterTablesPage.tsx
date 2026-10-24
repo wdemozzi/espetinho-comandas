@@ -6,6 +6,7 @@ import { formatBRL } from '../../lib/currency';
 import { TableStatusBadge } from '../../components/common/Badge';
 import { OrderLauncherModal } from '../../components/waiter/OrderLauncherModal';
 import { QrCodeModal } from '../../components/common/QrCodeModal';
+import { TableTransferModal } from '../../components/waiter/TableTransferModal';
 import {
   UtensilsCrossed,
   Plus,
@@ -18,6 +19,9 @@ import {
   Receipt,
   X,
   BellRing,
+  ArrowRightLeft,
+  Link2,
+  Unlink,
 } from 'lucide-react';
 
 interface WaiterTablesPageProps {
@@ -32,6 +36,10 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
     tab: Tab;
   } | null>(null);
   const [selectedTableForQr, setSelectedTableForQr] = useState<RestaurantTable | null>(null);
+  const [selectedTableForTransfer, setSelectedTableForTransfer] = useState<{
+    table: RestaurantTable;
+    tab: Tab;
+  } | null>(null);
   const [openTabModalTable, setOpenTabModalTable] = useState<RestaurantTable | null>(null);
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
@@ -198,11 +206,32 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
                   </button>
                 </div>
 
-                {/* Capacity */}
-                <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
+                {/* Capacity & Linked Table Info */}
+                <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
                   <Users className="w-3.5 h-3.5" />
                   <span>Capacidade: até {table.capacity} pessoas</span>
                 </div>
+
+                {/* Secondary Linked Table Banner */}
+                {table.linked_table_label && (
+                  <div className="p-2 mb-3 rounded-xl bg-ember-950/60 border border-ember-600/50 flex items-center justify-between text-xs">
+                    <span className="text-ember-300 font-bold flex items-center gap-1.5 truncate">
+                      <Link2 className="w-3.5 h-3.5 text-ember-400 flex-shrink-0" />
+                      <span>{table.linked_table_label}</span>
+                    </span>
+                    {activeTab && (
+                      <button
+                        type="button"
+                        onClick={() => db.unlinkTableFromTab(activeTab.id, table.id)}
+                        className="px-2 py-0.5 rounded-md bg-red-950/80 hover:bg-red-900 border border-red-700/60 text-red-300 font-bold text-[10px] flex items-center gap-1 transition"
+                        title="Desmembrar mesa e torná-la livre"
+                      >
+                        <Unlink className="w-3 h-3" />
+                        <span>Desmembrar</span>
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Occupied Table Info */}
                 {isOccupied && activeTab && (
@@ -227,6 +256,19 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
                         {activeTab.orders?.length || 0} rodadas
                       </span>
                     </div>
+
+                    {/* Mesas juntas a esta comanda */}
+                    {activeTab.joined_table_labels && activeTab.joined_table_labels.length > 0 && (
+                      <div className="flex items-center justify-between text-ember-300 font-semibold pt-1 border-t border-gray-800">
+                        <span className="flex items-center gap-1">
+                          <Link2 className="w-3 h-3 text-ember-400" />
+                          <span>Mesas Juntas:</span>
+                        </span>
+                        <span className="truncate max-w-[120px] text-right">
+                          {activeTab.joined_table_labels.join(', ')}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Ready alert */}
                     {pendingReadyItems > 0 && (
@@ -279,6 +321,15 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
                         <span>Consultar Conta / Caixa</span>
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTableForTransfer({ table, tab: activeTab })}
+                      className="w-full py-1.5 px-3 rounded-lg bg-charcoal-850 hover:bg-gray-700 border border-gray-700 text-gray-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5 text-ember-400" />
+                      <span>Trocar / Juntar Mesa</span>
+                    </button>
                   </>
                 ) : (
                   <button
@@ -407,6 +458,19 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
           table={selectedTableForQr}
           isOpen={true}
           onClose={() => setSelectedTableForQr(null)}
+        />
+      )}
+
+      {/* Modal: Transfer / Join Table */}
+      {selectedTableForTransfer && (
+        <TableTransferModal
+          currentTable={selectedTableForTransfer.table}
+          currentTab={selectedTableForTransfer.tab}
+          allTables={tables}
+          onClose={() => setSelectedTableForTransfer(null)}
+          onSuccess={() => {
+            setTables(db.getTables());
+          }}
         />
       )}
     </div>
