@@ -136,11 +136,11 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
               <Volume2 className="w-4 h-4 text-ember-400" />
             </button>
 
-            {/* Public Catalog Link */}
+            {/* Public Catalog Link (Opens in new tab exactly as customer sees it) */}
             <button
-              onClick={() => onNavigate('cardapio')}
-              title="Abrir Cardápio Digital Público"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-800/60 text-xs font-semibold whitespace-nowrap transition"
+              onClick={() => window.open('/?view=cardapio', '_blank')}
+              title="Abrir Cardápio Digital em Nova Aba (Visualização do Cliente)"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 text-purple-300 border border-purple-800/60 text-xs font-semibold whitespace-nowrap transition"
             >
               <Smartphone className="w-3.5 h-3.5" />
               <span>Cardápio Bio</span>
@@ -200,10 +200,9 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
           );
         })}
         <button
-          onClick={() => onNavigate('cardapio')}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[11px] font-medium transition ${
-            currentView === 'cardapio' ? 'text-amber-400' : 'text-gray-400 hover:text-gray-200'
-          }`}
+          onClick={() => window.open('/?view=cardapio', '_blank')}
+          title="Ver Cardápio Público em Nova Aba"
+          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[11px] font-medium text-gray-400 hover:text-purple-300 transition"
         >
           <Smartphone className="w-4 h-4" />
           <span>Cardápio</span>

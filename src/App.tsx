@@ -14,13 +14,16 @@ function AppContent() {
   const [tableToken, setTableToken] = useState<string | null>(null);
   const [cashierInitialTabId, setCashierInitialTabId] = useState<string | undefined>(undefined);
 
-  // Check query params for table QR code scan on mount
+  // Check query params for table QR code scan or direct cardapio preview on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const mesa = params.get('mesa');
+      const view = params.get('view');
       if (mesa) {
         setTableToken(mesa);
+        setCurrentView('cardapio');
+      } else if (view === 'cardapio' || window.location.pathname.startsWith('/cardapio')) {
         setCurrentView('cardapio');
       }
     }
@@ -32,27 +35,14 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0e12] text-gray-100 flex flex-col font-sans">
-      {/* Show header on internal views */}
-      {currentView !== 'cardapio' ? (
+    <div className="min-h-screen bg-[#0c0a17] text-gray-100 flex flex-col font-sans">
+      {/* Show header on internal operational views only */}
+      {currentView !== 'cardapio' && (
         <Header currentView={currentView} onNavigate={(view) => setCurrentView(view)} />
-      ) : (
-        <div className="bg-charcoal-900 border-b border-gray-800 px-4 py-2 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="text-gray-300 font-semibold">Visualização do Cliente / Cardápio Digital</span>
-          </div>
-          <button
-            onClick={() => setCurrentView('garcom')}
-            className="px-3 py-1 rounded-lg bg-charcoal-800 hover:bg-gray-700 text-ember-400 font-bold border border-gray-700 transition"
-          >
-            Voltar ao Sistema de Operação
-          </button>
-        </div>
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6">
+      <main className={`flex-1 w-full mx-auto ${currentView === 'cardapio' ? 'p-0 max-w-full' : 'max-w-7xl p-3 sm:p-6'}`}>
         {currentView === 'garcom' && (
           <WaiterTablesPage onNavigateToCashier={handleNavigateToCashier} />
         )}
