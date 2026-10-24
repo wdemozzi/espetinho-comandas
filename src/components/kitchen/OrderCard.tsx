@@ -99,7 +99,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, activeSectorFilter 
 
         {/* Elapsed Timer & Overall Status */}
         <div className="flex items-center gap-2">
-          {isAllReady ? (
+          {order.status === 'pending_confirmation' ? (
+            <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-900/80 text-amber-300 border border-amber-600 animate-pulse">
+              AGUARDANDO WHATSAPP
+            </span>
+          ) : isAllReady ? (
             <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-900/80 text-emerald-300 border border-emerald-600 animate-pulse">
               PRONTO
             </span>
@@ -126,6 +130,56 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, activeSectorFilter 
           </div>
         </div>
       </div>
+
+      {/* ANTI-TROTE: Pending Confirmation Warning Banner */}
+      {order.status === 'pending_confirmation' && (
+        <div className="p-3 bg-amber-950/70 border-b border-amber-800/80 text-amber-200 text-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-extrabold flex items-center gap-1.5 text-amber-300">
+              <AlertCircle className="w-4 h-4 text-amber-400" />
+              <span>Pedido Online (Retirada no Balcão)</span>
+            </span>
+            <span className="text-[10px] bg-red-900/90 text-red-100 font-black px-2 py-0.5 rounded border border-red-700">
+              NÃO ASSAR AINDA
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-300">
+            Cliente: <strong className="text-white">{order.customer_name}</strong> • Tel: <strong className="text-white">{order.customer_phone || 'Não informado'}</strong>
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            {order.customer_phone && (
+              <a
+                href={`https://wa.me/55${order.customer_phone.replace(/\D/g, '')}?text=Ol%C3%A1%20${encodeURIComponent(order.customer_name || 'Cliente')}!%20Recebemos%20seu%20Pedido%20%23${order.order_number}%20na%20CT%20Conveni%C3%AAncia.%20Podemos%20iniciar%20o%20preparo%20na%20brasa%3F`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 text-xs font-bold flex items-center gap-1 transition"
+              >
+                <span>WhatsApp</span>
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => db.confirmPendingOrder(order.id)}
+              className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow transition flex items-center justify-center gap-1"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Confirmar & Assar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Tem certeza que deseja recusar este pedido (trote/sem resposta)?')) {
+                  db.cancelPendingOrder(order.id, 'Cancelado por falta de confirmação no WhatsApp');
+                }
+              }}
+              className="py-1.5 px-2.5 rounded-lg bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 text-xs font-bold transition"
+              title="Cancelar / Trote"
+            >
+              <span>Recusar</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Clean Items Ticket Body (No repetitive giant buttons) */}
       <div className="p-3.5 space-y-2 flex-1 overflow-y-auto">
@@ -210,7 +264,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, activeSectorFilter 
 
       {/* SINGLE SOLID ACTION BUTTON PER TICKET */}
       <div className="p-3 bg-charcoal-850 border-t border-gray-800 flex-shrink-0">
-        {!isAnyPreparing && !isAllReady && !isAllDelivered && (
+        {order.status === 'pending_confirmation' ? (
+          <div className="text-center py-1 text-xs font-bold text-amber-400 flex items-center justify-center gap-1.5">
+            <AlertCircle className="w-4 h-4 text-amber-400" />
+            <span>Aguardando confirmação do cliente para liberar preparo</span>
+          </div>
+        ) : !isAnyPreparing && !isAllReady && !isAllDelivered ? (
           <button
             type="button"
             onClick={() => handleBatchUpdate('preparing')}
@@ -219,7 +278,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, activeSectorFilter 
             <ChefHat className="w-4 h-4" />
             <span>Iniciar Preparo deste Pedido</span>
           </button>
-        )}
+        ) : null}
 
         {isAnyPreparing && !isAllReady && !isAllDelivered && (
           <button

@@ -39,6 +39,7 @@ export const TableStatusBadge: React.FC<{ status: TableStatus }> = ({ status }) 
 
 export const OrderStatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
   const map: Record<OrderStatus, { label: string; variant: 'warning' | 'info' | 'success' | 'default' | 'danger' }> = {
+    pending_confirmation: { label: 'Aguardando WhatsApp', variant: 'warning' },
     received: { label: 'Recebido', variant: 'warning' },
     preparing: { label: 'Em Preparo', variant: 'info' },
     ready: { label: 'Pronto p/ Entrega', variant: 'success' },

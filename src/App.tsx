@@ -10,9 +10,16 @@ import { PublicMenuPage } from './pages/public/PublicMenuPage';
 import { LandingPage } from './pages/public/LandingPage';
 import { OperatorSwitchModal } from './components/common/OperatorSwitchModal';
 
+import { StaffLoginTerminal } from './components/common/StaffLoginTerminal';
+
 function AppContent() {
   const { currentUser } = useAuth();
-  const [isStaffAuthenticated, setIsStaffAuthenticated] = useState<boolean>(false);
+  const [isStaffAuthenticated, setIsStaffAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('ct_staff_auth') === 'true';
+    }
+    return false;
+  });
   const [isStaffLoginModalOpen, setIsStaffLoginModalOpen] = useState<boolean>(false);
   const [currentView, setCurrentView] = useState<string>('landing');
   const [tableToken, setTableToken] = useState<string | null>(null);
@@ -29,13 +36,45 @@ function AppContent() {
       if (mesa) {
         setTableToken(mesa);
         setCurrentView('cardapio_mesa');
-      } else if (view === 'sistema' || view === 'app' || pathname === '/sistema' || pathname === '/app') {
-        // Staff wants to enter system -> prompt for PIN authentication
-        setIsStaffLoginModalOpen(true);
+        return;
+      }
+
+      const isStaffRoute =
+        view === 'sistema' ||
+        view === 'operacao' ||
+        view === 'admin' ||
+        pathname === '/sistema' ||
+        pathname === '/operacao' ||
+        pathname === '/admin' ||
+        pathname === '/painel' ||
+        pathname === '/login';
+
+      const isAlreadyAuth = sessionStorage.getItem('ct_staff_auth') === 'true';
+
+      if (isStaffRoute) {
+        if (isAlreadyAuth) {
+          setIsStaffAuthenticated(true);
+          setCurrentView('garcom');
+        } else {
+          setIsStaffLoginModalOpen(true);
+        }
+      } else if (isAlreadyAuth) {
+        setIsStaffAuthenticated(true);
+        setCurrentView('garcom');
       } else {
-        // Default entry is the public SEO Landing Page
         setCurrentView('landing');
       }
+
+      // Keyboard shortcut Ctrl + Shift + S to open staff terminal anywhere
+      const handleShortcut = (e: KeyboardEvent) => {
+        if (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+          e.preventDefault();
+          setIsStaffLoginModalOpen(true);
+        }
+      };
+
+      window.addEventListener('keydown', handleShortcut);
+      return () => window.removeEventListener('keydown', handleShortcut);
     }
   }, []);
 
@@ -45,6 +84,12 @@ function AppContent() {
   };
 
   const handleLockAndExitToLanding = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('ct_staff_auth');
+      if (window.location.pathname !== '/') {
+        window.history.replaceState({}, '', '/');
+      }
+    }
     setIsStaffAuthenticated(false);
     setCurrentView('landing');
   };
@@ -76,15 +121,19 @@ function AppContent() {
           }}
         />
 
-        {/* PIN Authentication Modal for Staff Access */}
+        {/* Dedicated High-Security Staff Authentication Terminal */}
         {isStaffLoginModalOpen && (
-          <OperatorSwitchModal
-            isOpen={true}
-            onClose={() => setIsStaffLoginModalOpen(false)}
+          <StaffLoginTerminal
             onSuccess={() => {
               setIsStaffAuthenticated(true);
               setCurrentView('garcom');
               setIsStaffLoginModalOpen(false);
+            }}
+            onCancel={() => {
+              setIsStaffLoginModalOpen(false);
+              if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+                window.history.replaceState({}, '', '/');
+              }
             }}
           />
         )}

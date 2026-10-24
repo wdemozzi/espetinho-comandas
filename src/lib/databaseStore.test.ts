@@ -37,4 +37,50 @@ describe('DatabaseStore & Persistence', () => {
     const updated = db.getProfiles().find((p) => p.id === admin!.id);
     expect(updated?.pin_code).toBe('4321');
   });
+
+  it('should create online orders in pending_confirmation and allow staff confirmation or cancellation', () => {
+    const products = db.getProducts();
+    const product = products[0];
+
+    const onlineOrder = db.createOrder({
+      origin: 'external_catalog',
+      order_type: 'takeout',
+      customer_name: 'Cliente Teste',
+      customer_phone: '(44) 99999-8888',
+      items: [
+        {
+          product_id: product.id,
+          quantity: 2,
+          addons: [],
+        },
+      ],
+    });
+
+    expect(onlineOrder.status).toBe('pending_confirmation');
+    expect(onlineOrder.items[0].status).toBe('pending_confirmation');
+
+    // Confirm order
+    const confirmed = db.confirmPendingOrder(onlineOrder.id);
+    expect(confirmed.status).toBe('received');
+    expect(confirmed.items[0].status).toBe('received');
+
+    // Test cancellation of another order
+    const trollOrder = db.createOrder({
+      origin: 'external_catalog',
+      order_type: 'takeout',
+      customer_name: 'Trote',
+      customer_phone: '(44) 90000-0000',
+      items: [
+        {
+          product_id: product.id,
+          quantity: 1,
+          addons: [],
+        },
+      ],
+    });
+
+    const cancelled = db.cancelPendingOrder(trollOrder.id, 'Número falso');
+    expect(cancelled.status).toBe('cancelled');
+    expect(cancelled.items[0].status).toBe('cancelled');
+  });
 });

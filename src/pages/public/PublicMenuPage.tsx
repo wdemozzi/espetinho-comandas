@@ -128,6 +128,13 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       setErrorMessage('Por favor informe seu nome.');
       return;
     }
+    if (!table) {
+      const cleanPhone = customerPhone.replace(/\D/g, '');
+      if (cleanPhone.length < 10) {
+        setErrorMessage('Por favor informe seu WhatsApp com DDD (mínimo 10 dígitos) para confirmação do pedido.');
+        return;
+      }
+    }
 
     try {
       setIsSubmitting(true);
@@ -595,11 +602,13 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
             </div>
 
             <div>
-              <h3 className="text-xl font-black text-white">Pedido Confirmado!</h3>
-              <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+              <h3 className="text-xl font-black text-white">
+                {table ? 'Pedido Confirmado na Mesa!' : 'Pedido Registrado!'}
+              </h3>
+              <p className="text-xs text-gray-300 mt-1.5 leading-relaxed">
                 {table
                   ? 'Seu pedido foi enviado diretamente para a nossa cozinha e será entregue na sua mesa!'
-                  : 'Seu pedido foi recebido e já está em preparo! Avisaremos no seu WhatsApp assim que estiver pronto para retirada no balcão da CT Conveniência.'}
+                  : 'Para iniciarmos o preparo dos seus espetinhos na brasa, confirme seu pedido pelo nosso WhatsApp abaixo:'}
               </p>
             </div>
 
@@ -608,10 +617,23 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
               <p className="font-mono text-sm font-bold text-ember-400">{orderSuccessId}</p>
             </div>
 
+            {!table && (
+              <a
+                href={`https://wa.me/5544998765432?text=${encodeURIComponent(
+                  `Olá CT Conveniência! Acabei de fazer o Pedido #${orderSuccessId} no nome de ${customerName}. Gostaria de confirmar para começarem a assar!`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40"
+              >
+                <span>Confirmar no WhatsApp (1 Clique)</span>
+              </a>
+            )}
+
             <button
               type="button"
               onClick={() => setOrderSuccessId(null)}
-              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-900/30"
+              className="w-full py-2.5 px-4 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-300 font-bold text-xs transition"
             >
               Concluir
             </button>

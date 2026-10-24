@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../../lib/databaseStore';
-import { Product, Category } from '../../types/database.types';
+import { Product, Category, Order } from '../../types/database.types';
 import { formatBRL } from '../../lib/currency';
 import { SectorBadge } from '../../components/common/Badge';
 import {
@@ -27,6 +27,8 @@ import {
   Award,
   Zap,
   Check,
+  Copy,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -64,11 +66,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [generalNotes, setGeneralNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [orderSuccessId, setOrderSuccessId] = useState<string | null>(null);
+  const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
+  const [copiedPix, setCopiedPix] = useState<boolean>(false);
+  const [logoTapCount, setLogoTapCount] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // FAQ Accordion State
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  const handleLogoTap = () => {
+    setLogoTapCount((prev) => {
+      const next = prev + 1;
+      if (next >= 5) {
+        onStaffLoginClick();
+        return 0;
+      }
+      return next;
+    });
+    setTimeout(() => setLogoTapCount(0), 4000);
+  };
 
   const openProductModal = (product: Product) => {
     setActiveModalProduct(product);
@@ -121,7 +137,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Submit Order for Takeout
+  // Submit Order for Takeout (with Anti-Trote Validation)
   const handleConfirmOrder = () => {
     if (cart.length === 0) {
       setErrorMessage('Sua sacola está vazia.');
@@ -129,6 +145,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
     if (!customerName.trim()) {
       setErrorMessage('Por favor informe seu nome.');
+      return;
+    }
+    const cleanPhone = customerPhone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      setErrorMessage('Por favor informe seu WhatsApp com DDD (mínimo 10 dígitos) para confirmação do pedido.');
       return;
     }
 
@@ -139,8 +160,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       const order = db.createOrder({
         origin: 'external_catalog',
         order_type: 'takeout',
-        customer_name: customerName,
-        customer_phone: customerPhone,
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
         general_notes: generalNotes || undefined,
         items: cart.map((ci) => ({
           product_id: ci.product.id,
@@ -150,7 +171,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         })),
       });
 
-      setOrderSuccessId(order.id);
+      setSubmittedOrder(order);
       setCart([]);
       setIsBagOpen(false);
 
@@ -204,8 +225,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* 2. PUBLIC NAVBAR */}
       <header className="sticky top-0 z-40 bg-[#0c0a17]/95 backdrop-blur-md border-b border-gray-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
-          {/* Logo & Brand */}
-          <a href="#" className="flex items-center gap-3 group">
+          {/* Logo & Brand with secret 5-tap gesture */}
+          <div onClick={handleLogoTap} className="flex items-center gap-3 group cursor-pointer select-none">
             <div className="relative">
               <img
                 src="/ct-logo.png"
@@ -222,7 +243,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 Cervejas, Espetos & Conveniência
               </span>
             </div>
-          </a>
+          </div>
 
           {/* Nav Anchors (Desktop) */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-gray-300">
@@ -751,17 +772,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <a href="#faq" className="hover:text-purple-300 transition">Perguntas Frequentes</a>
           </div>
 
-          {/* PROTECTED STAFF LOGIN BUTTON */}
+          {/* Direct WhatsApp Contact */}
           <div>
-            <button
-              type="button"
-              onClick={onStaffLoginClick}
-              className="px-3.5 py-1.5 rounded-xl bg-charcoal-850 hover:bg-charcoal-800 text-gray-400 hover:text-purple-300 border border-gray-800 flex items-center gap-2 text-xs font-semibold transition"
-              title="Acesso exclusivo para Garçons, Cozinha, Caixa e Gerência"
+            <a
+              href="https://wa.me/5544998765432?text=Ol%C3%A1%2C%20gostaria%20de%20tirar%20uma%20d%C3%BAvida%20na%20CT%20Conveni%C3%AAncia!"
+              target="_blank"
+              rel="noreferrer"
+              className="px-4 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 text-xs font-bold transition flex items-center gap-2"
             >
-              <Lock className="w-3.5 h-3.5 text-purple-400" />
-              <span>Acesso da Equipe / Sistema</span>
-            </button>
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Fale Conosco</span>
+            </a>
           </div>
         </div>
 
@@ -1057,33 +1078,71 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         document.body
       )}
 
-      {/* ORDER SUCCESS MODAL */}
-      {orderSuccessId && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-charcoal-900 border border-emerald-500/80 rounded-2xl p-6 text-center space-y-4 shadow-2xl my-auto">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-600/20 border border-emerald-500 flex items-center justify-center text-emerald-400 animate-bounce">
-              <CheckCircle2 className="w-8 h-8" />
+      {/* ANTI-TROTE WHATSAPP CONFIRMATION MODAL */}
+      {submittedOrder && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-md bg-charcoal-900 border border-amber-500/80 rounded-3xl p-5 sm:p-6 text-center space-y-4 shadow-2xl my-auto">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <MessageCircle className="w-8 h-8 animate-pulse" />
             </div>
 
             <div>
-              <h3 className="text-xl font-black text-white">Pedido Confirmado!</h3>
-              <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
-                Seu pedido foi recebido pela cozinha e já está em preparo! Avisaremos no seu WhatsApp assim que estiver pronto para retirada no balcão da CT Conveniência.
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/20 text-amber-400 border border-amber-500/40 inline-block mb-1">
+                Aguardando Confirmação no WhatsApp
+              </span>
+              <h3 className="text-xl font-black text-white">Pedido #{submittedOrder.order_number} Registrado!</h3>
+              <p className="text-xs text-gray-300 mt-1.5 leading-relaxed">
+                Para garantirmos que ninguém passe trote e que seus espetinhos saiam quentinhos no ponto perfeito na brasa, <strong className="text-white">confirme seu pedido no nosso WhatsApp com 1 clique abaixo</strong>.
               </p>
             </div>
 
-            <div className="p-3 rounded-xl bg-charcoal-800 border border-gray-700 text-xs space-y-1">
-              <p className="text-gray-400">Código do Pedido:</p>
-              <p className="font-mono text-sm font-bold text-amber-400">{orderSuccessId}</p>
+            {/* Direct WhatsApp Button */}
+            <a
+              href={`https://wa.me/5544998765432?text=${encodeURIComponent(
+                `Olá CT Conveniência! Acabei de fazer o Pedido #${submittedOrder.order_number} para retirada no balcão no nome de ${submittedOrder.customer_name}.\nTotal: ${formatBRL(submittedOrder.total_cents)}.\nGostaria de confirmar para vocês começarem a assar na churrasqueira!`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2 group transform active:scale-95"
+            >
+              <MessageCircle className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+              <span>Confirmar no WhatsApp (1 Clique)</span>
+            </a>
+
+            {/* Pix Advance Payment (Optional) */}
+            <div className="p-3.5 bg-charcoal-850 rounded-2xl border border-gray-800 text-left text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-300 font-bold">Chave Pix (Telefone Oficial):</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText('44998765432');
+                    setCopiedPix(true);
+                    setTimeout(() => setCopiedPix(false), 3000);
+                  }}
+                  className="text-purple-400 hover:text-purple-300 font-bold text-[11px] flex items-center gap-1 transition"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{copiedPix ? 'Copiado!' : 'Copiar Chave'}</span>
+                </button>
+              </div>
+              <code className="block bg-charcoal-900 p-2 rounded-xl text-cyan-300 font-mono text-xs select-all border border-gray-800">
+                (44) 99876-5432
+              </code>
+              <p className="text-[11px] text-gray-500">
+                Você pode adiantar o pagamento via Pix e enviar o comprovante no WhatsApp, ou pagar no balcão ao retirar.
+              </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setOrderSuccessId(null)}
-              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-900/30"
-            >
-              Concluir
-            </button>
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setSubmittedOrder(null)}
+                className="w-full py-2.5 px-4 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-300 font-bold text-xs transition"
+              >
+                Fechar e Acompanhar pelo WhatsApp
+              </button>
+            </div>
           </div>
         </div>,
         document.body

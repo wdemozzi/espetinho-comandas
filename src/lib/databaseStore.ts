@@ -821,6 +821,8 @@ class DatabaseStore {
 
       orderTotalCents += itemTotalCents;
 
+      const initialItemStatus: OrderStatus = params.origin === 'external_catalog' ? 'pending_confirmation' : 'received';
+
       return {
         id: `oi-${orderId}-${idx}`,
         order_id: orderId,
@@ -834,7 +836,7 @@ class DatabaseStore {
         total_cents: itemTotalCents,
         notes: it.notes || null,
         sector: product.sector,
-        status: 'received',
+        status: initialItemStatus,
         prepared_at: null,
         delivered_at: null,
         created_at: new Date().toISOString(),
@@ -850,13 +852,15 @@ class DatabaseStore {
       }
     }
 
+    const initialOrderStatus: OrderStatus = params.origin === 'external_catalog' ? 'pending_confirmation' : 'received';
+
     const newOrder: Order = {
       id: orderId,
       establishment_id: this.establishment.id,
       order_number: orderNumber,
       origin: params.origin,
       order_type: params.order_type,
-      status: 'received',
+      status: initialOrderStatus,
       created_by: params.created_by || null,
       customer_name: params.customer_name || null,
       customer_phone: params.customer_phone || null,
@@ -903,6 +907,51 @@ class DatabaseStore {
     supabaseSync.saveToCloud('tabs', this.tabs);
 
     return newOrder;
+  }
+
+  /**
+   * Confirms a pending online order (e.g. after customer confirmed on WhatsApp or called)
+   * Moves order and all its items to 'received' to enter active kitchen queue.
+   */
+  public confirmPendingOrder(orderId: string): Order {
+    const order = this.orders.find((o) => o.id === orderId);
+    if (!order) throw new Error('Pedido não encontrado');
+
+    order.status = 'received';
+    for (const item of order.items) {
+      if (item.status === 'pending_confirmation') {
+        item.status = 'received';
+      }
+    }
+
+    soundService.playSuccessDing();
+    this.persist();
+    this.notify();
+    supabaseSync.broadcastOrder(order);
+    supabaseSync.saveToCloud('orders', this.orders);
+    return order;
+  }
+
+  /**
+   * Cancels a pending online order (Anti-Trote / fake order / rejected)
+   */
+  public cancelPendingOrder(orderId: string, reason?: string): Order {
+    const order = this.orders.find((o) => o.id === orderId);
+    if (!order) throw new Error('Pedido não encontrado');
+
+    order.status = 'cancelled';
+    if (reason) {
+      order.general_notes = `${order.general_notes ? order.general_notes + ' | ' : ''}Cancelado: ${reason}`;
+    }
+    for (const item of order.items) {
+      item.status = 'cancelled';
+    }
+
+    this.persist();
+    this.notify();
+    supabaseSync.broadcastOrder(order);
+    supabaseSync.saveToCloud('orders', this.orders);
+    return order;
   }
 
   // --- ACTIONS: KITCHEN & KDS ITEM STATUS ---
