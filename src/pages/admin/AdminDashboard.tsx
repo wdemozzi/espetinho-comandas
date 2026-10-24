@@ -41,6 +41,12 @@ export const AdminDashboard: React.FC = () => {
   const [newTableLabel, setNewTableLabel] = useState<string>('');
   const [newTableCapacity, setNewTableCapacity] = useState<number>(4);
 
+  const [isUserModalOpen, setIsUserModalOpen] = useState<boolean>(false);
+  const [newUserName, setNewUserName] = useState<string>('');
+  const [newUserRole, setNewUserRole] = useState<'garcom' | 'cozinha' | 'caixa' | 'admin'>('garcom');
+  const [newUserPhone, setNewUserPhone] = useState<string>('');
+  const [newUserPin, setNewUserPin] = useState<string>('1234');
+
   useEffect(() => {
     return db.subscribe(() => {
       setProducts(db.getProducts());
@@ -103,6 +109,21 @@ export const AdminDashboard: React.FC = () => {
     setIsTableModalOpen(false);
     setNewTableLabel('');
     setNewTableCapacity(4);
+  };
+
+  const handleSaveUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName.trim()) return;
+    db.saveProfile({
+      full_name: newUserName,
+      role: newUserRole,
+      phone: newUserPhone || null,
+      pin_code: newUserPin || '1234',
+    });
+    setIsUserModalOpen(false);
+    setNewUserName('');
+    setNewUserPhone('');
+    setNewUserPin('1234');
   };
 
   return (
@@ -349,9 +370,19 @@ export const AdminDashboard: React.FC = () => {
       {/* TAB 4: USERS & ROLES */}
       {activeTab === 'users' && (
         <div className="space-y-4">
-          <h3 className="text-sm font-bold text-gray-200">
-            Perfis de Acesso Operacionais ({profiles.length})
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-gray-200">
+              Equipe & Perfis de Atendimento ({profiles.length})
+            </h3>
+            <button
+              type="button"
+              onClick={() => setIsUserModalOpen(true)}
+              className="py-2 px-3.5 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-ember-600/20 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo Funcionário / Garçom</span>
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {profiles.map((p) => (
@@ -362,10 +393,12 @@ export const AdminDashboard: React.FC = () => {
                     {p.role}
                   </span>
                 </div>
-                <p className="text-xs text-gray-400">Tel: {p.phone}</p>
-                <div className="pt-2 border-t border-gray-800 text-[11px] text-emerald-400 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Ativo</span>
+                <p className="text-xs text-gray-400">Tel: {p.phone || 'Não informado'}</p>
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800">
+                  <span className="text-gray-400">PIN de Acesso:</span>
+                  <span className="font-mono font-bold text-amber-400 bg-charcoal-900 px-2 py-0.5 rounded border border-gray-700">
+                    {p.pin_code}
+                  </span>
                 </div>
               </div>
             ))}
@@ -524,6 +557,95 @@ export const AdminDashboard: React.FC = () => {
                   className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30"
                 >
                   Criar Mesa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Staff / User Create Modal */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-charcoal-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white">Cadastrar Funcionário / Garçom</h3>
+              <button
+                onClick={() => setIsUserModalOpen(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-300 block mb-1">
+                  Nome Completo:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Roberto Silva"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-ember-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">Função / Cargo:</label>
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value as 'garcom' | 'cozinha' | 'caixa' | 'admin')}
+                    className="w-full px-2 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
+                  >
+                    <option value="garcom">Garçom</option>
+                    <option value="cozinha">Cozinha</option>
+                    <option value="caixa">Caixa</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">PIN (4 dígitos):</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={4}
+                    placeholder="1234"
+                    value={newUserPin}
+                    onChange={(e) => setNewUserPin(e.target.value)}
+                    className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white font-mono font-bold focus:outline-none focus:border-ember-500 text-center"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-300 block mb-1">Telefone / WhatsApp (opcional):</label>
+                <input
+                  type="text"
+                  placeholder="(44) 99999-9999"
+                  value={newUserPhone}
+                  onChange={(e) => setNewUserPhone(e.target.value)}
+                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-ember-500"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsUserModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-ember-600 hover:bg-ember-500 text-white text-xs font-bold shadow-md shadow-ember-600/30"
+                >
+                  Salvar Funcionário
                 </button>
               </div>
             </form>

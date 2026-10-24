@@ -33,10 +33,13 @@ const INITIAL_ESTABLISHMENT: Establishment = {
 };
 
 const INITIAL_PROFILES: Profile[] = [
-  { id: 'u1', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Carlos Gerente', role: 'admin', phone: '(44) 99999-0001', is_active: true, created_at: new Date().toISOString() },
-  { id: 'u2', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Marcos Garçom', role: 'garcom', phone: '(44) 99999-0002', is_active: true, created_at: new Date().toISOString() },
-  { id: 'u3', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Zé da Brasa (Churrasqueiro)', role: 'cozinha', phone: '(44) 99999-0003', is_active: true, created_at: new Date().toISOString() },
-  { id: 'u4', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Ana Caixa', role: 'caixa', phone: '(44) 99999-0004', is_active: true, created_at: new Date().toISOString() },
+  { id: 'u1', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Carlos Gerente', role: 'admin', phone: '(44) 99999-0001', pin_code: '9999', is_active: true, created_at: new Date().toISOString() },
+  { id: 'u2', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Marcos (Garçom 1)', role: 'garcom', phone: '(44) 99999-0002', pin_code: '1111', is_active: true, created_at: new Date().toISOString() },
+  { id: 'u2b', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Lucas (Garçom 2)', role: 'garcom', phone: '(44) 99999-0005', pin_code: '2222', is_active: true, created_at: new Date().toISOString() },
+  { id: 'u2c', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Gabriel (Garçom 3)', role: 'garcom', phone: '(44) 99999-0006', pin_code: '3333', is_active: true, created_at: new Date().toISOString() },
+  { id: 'u2d', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Juliana (Garçom 4)', role: 'garcom', phone: '(44) 99999-0007', pin_code: '4444', is_active: true, created_at: new Date().toISOString() },
+  { id: 'u3', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Zé da Brasa (Churrasqueiro)', role: 'cozinha', phone: '(44) 99999-0003', pin_code: '5555', is_active: true, created_at: new Date().toISOString() },
+  { id: 'u4', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Ana Caixa', role: 'caixa', phone: '(44) 99999-0004', pin_code: '6666', is_active: true, created_at: new Date().toISOString() },
 ];
 
 const INITIAL_CATEGORIES: Category[] = [
@@ -492,6 +495,28 @@ class DatabaseStore {
         created_at: new Date().toISOString(),
       };
       this.tables.push(newTable);
+    }
+    this.notify();
+  }
+
+  public saveProfile(profileData: Partial<Profile>) {
+    if (profileData.id) {
+      const idx = this.profiles.findIndex((p) => p.id === profileData.id);
+      if (idx !== -1) {
+        this.profiles[idx] = { ...this.profiles[idx], ...profileData };
+      }
+    } else {
+      const newProfile: Profile = {
+        id: `u-${Date.now()}`,
+        establishment_id: this.establishment.id,
+        full_name: profileData.full_name || 'Novo Funcionário',
+        role: profileData.role || 'garcom',
+        phone: profileData.phone || null,
+        pin_code: profileData.pin_code || '1234',
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+      this.profiles.push(newProfile);
     }
     this.notify();
   }
