@@ -11,6 +11,7 @@ import {
   getSupabaseAnonKey,
   setSupabaseAnonKey,
   isSupabaseConfigured,
+  getSupabaseDiagnostics,
 } from '../../lib/supabaseClient';
 import { supabaseSync } from '../../lib/supabaseSync';
 import {
@@ -604,30 +605,72 @@ END $$;`;
             </div>
 
             {/* Connection Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
               <div className="p-3 rounded-xl bg-charcoal-900 border border-gray-800">
                 <span className="text-[11px] font-semibold text-gray-400 block mb-0.5">URL do Projeto Supabase:</span>
                 <code className="text-xs font-mono text-cyan-300 font-bold break-all select-all">
                   {getSupabaseUrl()}
                 </code>
               </div>
+
               <div className="p-3 rounded-xl bg-charcoal-900 border border-gray-800">
-                <span className="text-[11px] font-semibold text-gray-400 block mb-0.5">Status do Canal Realtime:</span>
+                <span className="text-[11px] font-semibold text-gray-400 block mb-0.5">Origem da Chave Anon:</span>
+                <div className="flex items-center gap-1.5 text-xs font-bold">
+                  <span className={getSupabaseDiagnostics().isConfigured ? 'text-emerald-400' : 'text-amber-400'}>
+                    {getSupabaseDiagnostics().source}
+                  </span>
+                  <span className="text-[11px] text-gray-500 font-mono">
+                    ({getSupabaseDiagnostics().keyMasked})
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-charcoal-900 border border-gray-800">
+                <span className="text-[11px] font-semibold text-gray-400 block mb-0.5">Canal Realtime & Nuvem:</span>
                 <div className="flex items-center gap-2 text-xs font-bold">
                   {syncStatus.isConfigured ? (
                     <>
-                      <Wifi className="w-4 h-4 text-emerald-400 animate-pulse" />
-                      <span className="text-emerald-400">Canal ct_conveniencia_realtime Conectado</span>
+                      <Wifi className="w-4 h-4 text-emerald-400 animate-pulse flex-shrink-0" />
+                      <span className="text-emerald-400">Ativo</span>
+                      {syncStatus.lastSyncedAt && (
+                        <span className="text-[10px] text-gray-500 font-normal">({syncStatus.lastSyncedAt})</span>
+                      )}
                     </>
                   ) : (
                     <>
-                      <WifiOff className="w-4 h-4 text-amber-400" />
-                      <span className="text-amber-400">Desconectado (Insira a Anon Key abaixo)</span>
+                      <WifiOff className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                      <span className="text-amber-400">Pendente de Chave</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Quick Phone Pairing Link */}
+            {getSupabaseDiagnostics().rawKey && (
+              <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-cyan-300 block">Sincronizar Celular com 1 Clique:</span>
+                  <p className="text-gray-400 text-[11px]">
+                    Envie este link para abrir no celular da equipe. O celular conecta ao Supabase instantaneamente sem precisar digitar nada!
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pairingUrl = `${window.location.origin}/?anonKey=${encodeURIComponent(getSupabaseDiagnostics().rawKey)}`;
+                    navigator.clipboard.writeText(pairingUrl);
+                    setToastMessage('Link de sincronização copiado! Abra no celular para conectar.');
+                    setTimeout(() => setToastMessage(null), 3500);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-md shadow-cyan-600/30 flex-shrink-0"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copiar Link de Sincronização</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Form to insert/update Anon Key */}

@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Receipt,
   X,
+  BellRing,
 } from 'lucide-react';
 
 interface WaiterTablesPageProps {
@@ -74,6 +75,7 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
 
   const activeTablesCount = tables.filter((t) => t.status === 'ocupada').length;
   const freeTablesCount = tables.filter((t) => t.status === 'livre').length;
+  const tableReadyOrders = db.getReadyOrders().filter((o) => o.table_number != null);
 
   return (
     <div className="space-y-6">
@@ -101,6 +103,66 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
         </div>
       </div>
 
+      {/* EXPEDITION READY TO SERVE BANNER */}
+      {tableReadyOrders.length > 0 && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-emerald-950/60 border-2 border-emerald-500 shadow-2xl shadow-emerald-950/40 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-300">
+                <BellRing className="w-4 h-4 animate-bounce" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-black text-white">
+                  Expedição: {tableReadyOrders.length} pedido(s) pronto(s) para levar à mesa!
+                </h2>
+                <p className="text-xs text-emerald-300/80">
+                  A cozinha finalizou o preparo. Garçom, retire na bancada e entregue na mesa indicada.
+                </p>
+              </div>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-600 text-white font-black animate-pulse hidden sm:inline">
+              Pronto na Brasa
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {tableReadyOrders.map((order) => {
+              const readyItems = order.items.filter((i) => i.status === 'ready' || i.status === 'delivered');
+              return (
+                <div
+                  key={order.id}
+                  className="p-3.5 rounded-xl bg-charcoal-900 border border-emerald-500/60 flex items-center justify-between gap-3 shadow-md"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-lg bg-ember-600 text-white font-black text-xs">
+                        Mesa {String(order.table_number).padStart(2, '0')}
+                      </span>
+                      <span className="text-[11px] font-mono text-gray-400">#{order.order_number}</span>
+                      {order.customer_name && (
+                        <span className="text-xs font-bold text-gray-200 truncate">({order.customer_name.split(' ')[0]})</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-emerald-300 font-semibold mt-1 truncate">
+                      {readyItems.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => db.deliverOrder(order.id)}
+                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-1 shadow-md shadow-emerald-600/30 transition transform active:scale-95 flex-shrink-0"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Entregar</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Tables Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {tables.map((table) => {
@@ -112,7 +174,9 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
             <div
               key={table.id}
               className={`rounded-2xl border transition-all p-4 flex flex-col justify-between ${
-                isOccupied
+                pendingReadyItems > 0
+                  ? 'bg-charcoal-900 border-emerald-500 shadow-xl shadow-emerald-950/30 ring-2 ring-emerald-500/40'
+                  : isOccupied
                   ? 'bg-charcoal-900 border-ember-600/70 shadow-lg shadow-ember-950/20'
                   : 'bg-charcoal-850/80 border-gray-800 hover:border-gray-700'
               }`}
@@ -179,6 +243,23 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
               <div className="mt-4 pt-3 border-t border-gray-800 space-y-2">
                 {isOccupied && activeTab ? (
                   <>
+                    {pendingReadyItems > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          activeTab.orders?.forEach((o) => {
+                            if (o.items.some((i) => i.status === 'ready')) {
+                              db.deliverOrder(o.id);
+                            }
+                          });
+                        }}
+                        className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 transition animate-pulse transform active:scale-95"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Entregar Itens na Mesa</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setSelectedTableForOrder({ table, tab: activeTab })}

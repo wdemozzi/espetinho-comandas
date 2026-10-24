@@ -2,6 +2,22 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const getStoredKey = (): string => {
   if (typeof window === 'undefined') return '';
+  // Check URL query param first for automatic device pairing (?anonKey=...)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const paramKey = params.get('anonKey') || params.get('supabase_key');
+    if (paramKey && paramKey.startsWith('eyJ')) {
+      localStorage.setItem('ct_supabase_anon_key', paramKey.trim());
+      // Clean URL without refresh
+      params.delete('anonKey');
+      params.delete('supabase_key');
+      const cleanSearch = params.toString() ? `?${params.toString()}` : '';
+      window.history.replaceState({}, '', `${window.location.pathname}${cleanSearch}`);
+      return paramKey.trim();
+    }
+  } catch {
+    // Ignore URL parse error
+  }
   return localStorage.getItem('ct_supabase_anon_key') || '';
 };
 
@@ -29,6 +45,28 @@ export const isSupabaseConfigured = (): boolean => {
       key !== 'your-anon-key-here' &&
       !url.includes('your-project-id')
   );
+};
+
+export const getSupabaseDiagnostics = () => {
+  const url = getSupabaseUrl();
+  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const storedKey = typeof window !== 'undefined' ? localStorage.getItem('ct_supabase_anon_key') || '' : '';
+  const activeKey = getSupabaseAnonKey();
+
+  let source = 'Nenhum';
+  if (envKey && envKey !== 'SEU_ANON_KEY_AQUI' && envKey !== 'your-anon-key-here') {
+    source = 'Vercel / Build (.env)';
+  } else if (storedKey) {
+    source = 'Navegador Local (Painel)';
+  }
+
+  return {
+    url,
+    isConfigured: isSupabaseConfigured(),
+    source,
+    keyMasked: activeKey && activeKey.length > 15 ? `${activeKey.slice(0, 12)}...${activeKey.slice(-6)}` : (activeKey ? 'Chave curta' : 'Não configurada'),
+    rawKey: activeKey,
+  };
 };
 
 let clientInstance: SupabaseClient | null = null;

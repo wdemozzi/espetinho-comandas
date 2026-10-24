@@ -18,6 +18,9 @@ import {
   AlertCircle,
   Eye,
   X,
+  BellRing,
+  MessageCircle,
+  ShoppingBag,
 } from 'lucide-react';
 
 interface CashierTabsPageProps {
@@ -48,6 +51,7 @@ export const CashierTabsPage: React.FC<CashierTabsPageProps> = ({ initialTabId }
   const historyTabs = tabs.filter((t) => t.status === 'paid' || t.status === 'cancelled');
 
   const displayedTabs = activeViewMode === 'open' ? openTabs : historyTabs;
+  const takeoutReadyOrders = db.getReadyOrders().filter((o) => o.table_number == null);
 
   // Selected tab details
   const selectedTab = tabs.find((t) => t.id === selectedTabId) || (displayedTabs.length > 0 ? displayedTabs[0] : null);
@@ -146,6 +150,82 @@ export const CashierTabsPage: React.FC<CashierTabsPageProps> = ({ initialTabId }
           </button>
         </div>
       </div>
+
+      {/* EXPEDITION READY FOR TAKEOUT BANNER */}
+      {takeoutReadyOrders.length > 0 && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-purple-950/60 border-2 border-purple-500 shadow-2xl shadow-purple-950/40 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400 flex items-center justify-center text-purple-300">
+                <ShoppingBag className="w-4 h-4 animate-bounce" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-black text-white">
+                  Expedição Balcão: {takeoutReadyOrders.length} pedido(s) pronto(s) para retirada!
+                </h2>
+                <p className="text-xs text-purple-300/80">
+                  Os espetinhos já saíram da brasa. Chame o cliente pelo nome ou avise com 1 clique no WhatsApp.
+                </p>
+              </div>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-purple-600 text-white font-black animate-pulse hidden sm:inline">
+              Retirada no Balcão
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {takeoutReadyOrders.map((order) => {
+              const cleanPhone = (order.customer_phone || '').replace(/\D/g, '');
+              const readyItems = order.items.filter((i) => i.status === 'ready' || i.status === 'delivered');
+              const waText = `Olá ${order.customer_name || 'Cliente'}! Seus espetinhos do Pedido #${order.order_number} acabaram de sair quentinhos da brasa na CT Conveniência e estão prontos para retirada no balcão!`;
+
+              return (
+                <div
+                  key={order.id}
+                  className="p-3.5 rounded-xl bg-charcoal-900 border border-purple-500/60 flex items-center justify-between gap-3 shadow-md"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-lg bg-purple-600 text-white font-black text-xs">
+                        Balcão #{order.order_number}
+                      </span>
+                      {order.customer_name && (
+                        <span className="text-xs font-bold text-gray-200 truncate">({order.customer_name})</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-purple-300 font-semibold mt-1 truncate">
+                      {readyItems.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {cleanPhone && (
+                      <a
+                        href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(waText)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Avisar cliente no WhatsApp"
+                        className="p-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 text-emerald-400 transition"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => db.deliverOrder(order.id)}
+                      className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs flex items-center gap-1 shadow-md shadow-purple-600/30 transition transform active:scale-95"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Entregar</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {actionError && (
         <div className="p-3.5 rounded-xl bg-red-950/70 border border-red-800 text-red-200 text-xs flex items-center gap-2">

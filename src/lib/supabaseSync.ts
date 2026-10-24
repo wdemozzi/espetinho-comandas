@@ -1,4 +1,4 @@
-import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
+import { getSupabaseClient, isSupabaseConfigured, getSupabaseDiagnostics } from './supabaseClient';
 import { Order, Tab, Profile, OrderStatus } from '../types/database.types';
 import { soundService } from './sound';
 
@@ -14,26 +14,50 @@ type SyncCallback = {
   }) => void;
 };
 
+export interface SyncStatus {
+  isConfigured: boolean;
+  isConnected: boolean;
+  tableExists: boolean | null;
+  lastError: string | null;
+  lastSyncedAt: string | null;
+  keySource: string;
+}
+
 class SupabaseSyncService {
   private channel: ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>['channel']> | null = null;
   private callbacks: SyncCallback | null = null;
   private isConnecting: boolean = false;
   private isConnected: boolean = false;
+  private tableExists: boolean | null = null;
+  private lastError: string | null = null;
+  private lastSyncedAt: string | null = null;
+  private pullInterval: ReturnType<typeof setInterval> | null = null;
 
   public init(callbacks: SyncCallback) {
     this.callbacks = callbacks;
     this.reconnect();
+
+    // Start background polling (every 6s) as reliable fallback
+    if (typeof window !== 'undefined' && !this.pullInterval) {
+      this.pullInterval = setInterval(() => {
+        if (this.isConnected || isSupabaseConfigured()) {
+          this.pullInitialStateFromCloud();
+        }
+      }, 6000);
+    }
   }
 
   public reconnect() {
     if (!isSupabaseConfigured()) {
       this.isConnected = false;
+      this.lastError = 'Chave Anon do Supabase não configurada no projeto.';
       return;
     }
 
     const client = getSupabaseClient();
     if (!client) {
       this.isConnected = false;
+      this.lastError = 'Não foi possível inicializar cliente Supabase.';
       return;
     }
 
@@ -47,7 +71,6 @@ class SupabaseSyncService {
       }
 
       // 1. Establish Realtime Broadcast Channel
-      // Works even without creating tables in Supabase!
       this.channel = client.channel('ct_conveniencia_realtime', {
         config: {
           broadcast: { self: false },
@@ -62,6 +85,7 @@ class SupabaseSyncService {
               payload.payload.tab
             );
             soundService.playSuccessDing();
+            this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
         })
         .on('broadcast', { event: 'item_status_updated' }, (payload) => {
@@ -70,16 +94,22 @@ class SupabaseSyncService {
               payload.payload.itemId,
               payload.payload.newStatus
             );
+            if (payload.payload.newStatus === 'ready') {
+              soundService.playOrderReady();
+            }
+            this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
         })
         .on('broadcast', { event: 'profiles_updated' }, (payload) => {
           if (payload?.payload?.profiles) {
             this.callbacks?.onRemoteProfilesUpdated(payload.payload.profiles);
+            this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
         })
         .on('broadcast', { event: 'tab_updated' }, (payload) => {
           if (payload?.payload?.tab) {
             this.callbacks?.onRemoteTabUpdated(payload.payload.tab);
+            this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
         })
         // 2. Also listen for postgres_changes if ct_cloud_sync table exists
@@ -97,28 +127,38 @@ class SupabaseSyncService {
             } else if (row.id === 'profiles' && Array.isArray(row.data)) {
               this.callbacks?.onRemoteProfilesUpdated(row.data as Profile[]);
             }
+            this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
         )
         .subscribe((status) => {
           this.isConnecting = false;
           if (status === 'SUBSCRIBED') {
             this.isConnected = true;
+            this.lastError = null;
+            this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
             // Pull initial state from Cloud if table exists
             this.pullInitialStateFromCloud();
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
             this.isConnected = false;
+            this.lastError = `Status do canal: ${status}`;
           }
         });
-    } catch {
+    } catch (err: unknown) {
       this.isConnecting = false;
       this.isConnected = false;
+      this.lastError = (err as Error).message || 'Erro ao conectar canal Realtime.';
     }
   }
 
-  public getStatus(): { isConfigured: boolean; isConnected: boolean } {
+  public getStatus(): SyncStatus {
+    const diag = getSupabaseDiagnostics();
     return {
       isConfigured: isSupabaseConfigured(),
       isConnected: this.isConnected,
+      tableExists: this.tableExists,
+      lastError: this.lastError,
+      lastSyncedAt: this.lastSyncedAt,
+      keySource: diag.source,
     };
   }
 
@@ -131,6 +171,7 @@ class SupabaseSyncService {
         event: 'order_created',
         payload: { order, tab },
       });
+      this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
     } catch {
       // Ignore network errors in broadcast
     }
@@ -144,6 +185,7 @@ class SupabaseSyncService {
         event: 'item_status_updated',
         payload: { itemId, newStatus },
       });
+      this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
     } catch {
       // Ignore network errors
     }
@@ -181,7 +223,7 @@ class SupabaseSyncService {
     if (!client) return;
 
     try {
-      await client.from('ct_cloud_sync').upsert(
+      const { error } = await client.from('ct_cloud_sync').upsert(
         {
           id,
           data,
@@ -189,8 +231,20 @@ class SupabaseSyncService {
         },
         { onConflict: 'id' }
       );
-    } catch {
-      // ct_cloud_sync table might not exist yet; Realtime Broadcast handles it
+
+      if (error) {
+        if (error.code === '42P01') {
+          this.tableExists = false;
+          this.lastError = 'Tabela public.ct_cloud_sync não encontrada no Supabase.';
+        } else {
+          this.lastError = error.message;
+        }
+      } else {
+        this.tableExists = true;
+        this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
+      }
+    } catch (err: unknown) {
+      this.lastError = (err as Error).message;
     }
   }
 
@@ -203,7 +257,17 @@ class SupabaseSyncService {
         .from('ct_cloud_sync')
         .select('id, data');
 
-      if (error || !data) return;
+      if (error) {
+        if (error.code === '42P01') {
+          this.tableExists = false;
+        } else {
+          this.lastError = error.message;
+        }
+        return;
+      }
+
+      this.tableExists = true;
+      if (!data || data.length === 0) return;
 
       const fullData: {
         orders?: Order[];
@@ -223,6 +287,7 @@ class SupabaseSyncService {
 
       if (Object.keys(fullData).length > 0) {
         this.callbacks?.onFullSyncReceived(fullData);
+        this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
       }
     } catch {
       // Table may not exist yet

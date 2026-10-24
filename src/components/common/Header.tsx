@@ -12,9 +12,12 @@ import {
   Lock,
   UserCheck,
   LogOut,
+  BellRing,
 } from 'lucide-react';
 import { soundService } from '../../lib/sound';
+import { db } from '../../lib/databaseStore';
 import { OperatorSwitchModal } from './OperatorSwitchModal';
+import { ExpeditionModal } from './ExpeditionModal';
 
 interface HeaderProps {
   currentView: string;
@@ -26,7 +29,15 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLockO
   const { currentUser } = useAuth();
   const [time, setTime] = useState<string>('');
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState<boolean>(false);
+  const [isExpeditionOpen, setIsExpeditionOpen] = useState<boolean>(false);
+  const [readyCount, setReadyCount] = useState<number>(() => db.getReadyOrders().length);
   const [pendingRestrictedView, setPendingRestrictedView] = useState<string | null>(null);
+
+  useEffect(() => {
+    return db.subscribe(() => {
+      setReadyCount(db.getReadyOrders().length);
+    });
+  }, []);
 
   useEffect(() => {
     const updateTime = () => {
@@ -129,6 +140,19 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLockO
 
           {/* Quick Actions & Operator Badge */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* EXPEDITION READY ALERT BUTTON */}
+            {readyCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsExpeditionOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/40 border border-emerald-400 animate-pulse transition transform hover:scale-105"
+                title="Clique para ver os pedidos prontos para entrega"
+              >
+                <BellRing className="w-3.5 h-3.5 animate-bounce" />
+                <span>{readyCount} Pronto{readyCount > 1 ? 's' : ''}!</span>
+              </button>
+            )}
+
             {/* Audio test button */}
             <button
               onClick={() => soundService.playOrderReady()}
@@ -240,6 +264,12 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, onLockO
           }}
         />
       )}
+
+      {/* Expedition Ready Orders Modal */}
+      <ExpeditionModal
+        isOpen={isExpeditionOpen}
+        onClose={() => setIsExpeditionOpen(false)}
+      />
     </header>
   );
 };

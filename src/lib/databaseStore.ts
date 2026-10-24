@@ -1018,7 +1018,27 @@ class DatabaseStore {
 
     this.persist();
     this.notify();
+    supabaseSync.broadcastOrder(order);
     supabaseSync.saveToCloud('orders', this.orders);
+  }
+
+  /**
+   * Convenience method to mark all items in an order as delivered
+   */
+  public deliverOrder(orderId: string) {
+    this.updateEntireOrderStatus(orderId, 'delivered', 'all');
+  }
+
+  /**
+   * Returns all active orders that have items ready for pickup/delivery
+   */
+  public getReadyOrders(): Order[] {
+    return this.orders.filter(
+      (o) =>
+        o.status !== 'delivered' &&
+        o.status !== 'cancelled' &&
+        (o.status === 'ready' || o.items.some((i) => i.status === 'ready'))
+    );
   }
 
   // --- ACTIONS: BILL SPLITS (DIVIDIR CONTA) ---
