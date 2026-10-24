@@ -4,6 +4,7 @@ import { db } from '../../lib/databaseStore';
 import { Product, RestaurantTable, Category } from '../../types/database.types';
 import { formatBRL } from '../../lib/currency';
 import { SectorBadge } from '../../components/common/Badge';
+import { validateCustomerName, validateBrazilianMobilePhone, formatPhoneMask } from '../../lib/validators';
 import {
   Flame,
   ShoppingBag,
@@ -124,14 +125,22 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       setErrorMessage('Sua sacola está vazia.');
       return;
     }
-    if (!customerName.trim()) {
-      setErrorMessage('Por favor informe seu nome.');
+    const nameCheck = validateCustomerName(customerName);
+    if (!nameCheck.isValid) {
+      setErrorMessage(nameCheck.error || 'Por favor informe um nome válido.');
       return;
     }
+
     if (!table) {
-      const cleanPhone = customerPhone.replace(/\D/g, '');
-      if (cleanPhone.length < 10) {
-        setErrorMessage('Por favor informe seu WhatsApp com DDD (mínimo 10 dígitos) para confirmação do pedido.');
+      const phoneCheck = validateBrazilianMobilePhone(customerPhone);
+      if (!phoneCheck.isValid) {
+        setErrorMessage(phoneCheck.error || 'Por favor informe um WhatsApp válido com DDD.');
+        return;
+      }
+    } else if (customerPhone.trim()) {
+      const phoneCheck = validateBrazilianMobilePhone(customerPhone);
+      if (!phoneCheck.isValid) {
+        setErrorMessage(phoneCheck.error || 'WhatsApp informado é inválido.');
         return;
       }
     }
@@ -539,13 +548,13 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                 )}
 
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-400 block mb-1">Seu Nome:</label>
+                  <label className="text-[11px] font-semibold text-gray-300 block mb-1">Seu Nome e Sobrenome:</label>
                   <div className="relative">
                     <User className="w-4 h-4 absolute left-3 top-2.5 text-gray-500" />
                     <input
                       type="text"
                       required
-                      placeholder="Ex: João da Silva"
+                      placeholder="Ex: William Souza"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
@@ -554,18 +563,26 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-400 block mb-1">WhatsApp / Telefone para Contato:</label>
+                  <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+                    {table ? 'WhatsApp com DDD (Opcional):' : 'WhatsApp com DDD (Obrigatório):'}
+                  </label>
                   <div className="relative">
                     <Phone className="w-4 h-4 absolute left-3 top-2.5 text-gray-500" />
                     <input
-                      type="text"
-                      placeholder="(44) 99999-9999"
+                      type="tel"
+                      required={!table}
+                      maxLength={15}
+                      placeholder="(44) 99735-7463"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
+                      onChange={(e) => setCustomerPhone(formatPhoneMask(e.target.value))}
+                      className="w-full pl-9 pr-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500 font-mono"
                     />
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-1">Avisaremos por WhatsApp assim que os itens estiverem prontos para retirada.</p>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    {table
+                      ? 'Informe seu WhatsApp para receber comprovante e atualizações do pedido.'
+                      : 'Número real com DDD para confirmação e aviso de retirada no balcão.'}
+                  </p>
                 </div>
               </div>
             </div>

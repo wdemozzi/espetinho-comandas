@@ -10,6 +10,7 @@ import {
   Truck,
   Check,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 
 interface OrderCardProps {
@@ -128,6 +129,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, activeSectorFilter 
             <Clock className="w-3 h-3" />
             <span>{elapsedMinutes}m</span>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Deseja cancelar e remover o Pedido #${order.order_number} da tela?`)) {
+                db.cancelPendingOrder(order.id, 'Cancelado pelo operador');
+              }
+            }}
+            title="Cancelar e remover este pedido da fila"
+            className="p-1 rounded-lg text-gray-500 hover:text-red-400 hover:bg-black/40 transition"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
