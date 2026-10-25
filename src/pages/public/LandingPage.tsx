@@ -30,6 +30,8 @@ import {
   Check,
   Copy,
   AlertTriangle,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -74,6 +76,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // FAQ Accordion State
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [menuViewMode, setMenuViewMode] = useState<'compact' | 'grid'>('compact');
 
   const handleLogoTap = () => {
     setLogoTapCount((prev) => {
@@ -236,31 +239,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   return (
     <div className="min-h-screen bg-[#0c0a17] text-gray-100 flex flex-col font-sans selection:bg-purple-600 selection:text-white">
       {/* 1. TOP ANNOUNCEMENT BAR */}
-      <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-purple-950 border-b border-purple-800/40 text-purple-200 text-xs py-2 px-4 text-center font-medium">
-        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span>🔥 Espetinhos Grelhados na Brasa • ❄️ Cerveja Trincando a -4°C • 🛍️ Retirada Rápida sem Espera</span>
+      <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-purple-950 border-b border-purple-800/40 text-purple-200 text-[11px] sm:text-xs py-1.5 px-3 text-center font-medium overflow-hidden">
+        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2 truncate">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping flex-shrink-0" />
+          <span className="truncate">🔥 Espetinhos na Brasa • ❄️ Cerveja a -4°C • ⚡ Retirada Rápida sem Espera</span>
         </div>
       </div>
 
       {/* 2. PUBLIC NAVBAR */}
       <header className="sticky top-0 z-40 bg-[#0c0a17]/95 backdrop-blur-md border-b border-gray-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2">
           {/* Logo & Brand with secret 5-tap gesture */}
-          <div onClick={handleLogoTap} className="flex items-center gap-3 group cursor-pointer select-none">
-            <div className="relative">
+          <div onClick={handleLogoTap} className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer select-none min-w-0">
+            <div className="relative flex-shrink-0">
               <img
                 src="/ct-logo.png"
                 alt="CT Conveniência"
-                className="w-11 h-11 rounded-xl object-contain shadow-lg shadow-purple-600/50 border border-purple-500/40 bg-charcoal-950 p-0.5 transition-transform group-hover:scale-105"
+                className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl object-contain shadow-lg shadow-purple-600/50 border border-purple-500/40 bg-charcoal-950 p-0.5 transition-transform group-hover:scale-105"
               />
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-charcoal-900" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-charcoal-900" />
             </div>
-            <div>
-              <span className="font-black text-lg tracking-tight bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent block">
+            <div className="min-w-0">
+              <span className="font-black text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent block truncate leading-tight">
                 CT Conveniência
               </span>
-              <span className="text-[11px] text-gray-400 block -mt-0.5 font-medium">
+              <span className="text-[10px] sm:text-[11px] text-gray-400 block font-medium truncate">
                 Cervejas, Espetos & Conveniência
               </span>
             </div>
@@ -277,7 +280,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </nav>
 
           {/* Quick CTAs */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <a
               href="https://wa.me/5544997357463?text=Ol%C3%A1%2C%20gostaria%20de%20fazer%20um%20pedido%20na%20CT%20Conveni%C3%AAncia!"
               target="_blank"
@@ -290,9 +293,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <a
               href="#cardapio"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition transform hover:-translate-y-0.5"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition transform hover:-translate-y-0.5"
             >
-              <ShoppingBag className="w-4 h-4" />
+              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>Pedir Online</span>
             </a>
           </div>
@@ -419,9 +422,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-6 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl font-bold">
+          {/* Scrollable Carousel on mobile, grid on desktop */}
+          <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto no-scrollbar pb-3 pt-1 snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="min-w-[250px] max-w-[260px] sm:min-w-0 sm:max-w-none snap-start p-5 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition space-y-2.5 flex-shrink-0 sm:flex-shrink">
+              <div className="w-11 h-11 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl font-bold">
                 ❄️
               </div>
               <h4 className="font-bold text-base text-white">Cervejas a -4°C</h4>
@@ -430,8 +434,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl font-bold">
+            <div className="min-w-[250px] max-w-[260px] sm:min-w-0 sm:max-w-none snap-start p-5 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition space-y-2.5 flex-shrink-0 sm:flex-shrink">
+              <div className="w-11 h-11 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl font-bold">
                 🥩
               </div>
               <h4 className="font-bold text-base text-white">Picanha & Carnes Nobres</h4>
@@ -440,8 +444,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl font-bold">
+            <div className="min-w-[250px] max-w-[260px] sm:min-w-0 sm:max-w-none snap-start p-5 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition space-y-2.5 flex-shrink-0 sm:flex-shrink">
+              <div className="w-11 h-11 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl font-bold">
                 ⚡
               </div>
               <h4 className="font-bold text-base text-white">Retirada Ágil sem Fila</h4>
@@ -450,8 +454,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl font-bold">
+            <div className="min-w-[250px] max-w-[260px] sm:min-w-0 sm:max-w-none snap-start p-5 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition space-y-2.5 flex-shrink-0 sm:flex-shrink">
+              <div className="w-11 h-11 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl font-bold">
                 🛒
               </div>
               <h4 className="font-bold text-base text-white">Conveniência Completa</h4>
@@ -459,6 +463,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 Gelo, carvão, refrigerantes, energéticos, destilados, vinhos e petiscos prontos para salvar a sua festa.
               </p>
             </div>
+          </div>
+          {/* Subtle swipe hint for mobile */}
+          <div className="sm:hidden flex items-center justify-center gap-1.5 text-[11px] text-gray-500 pt-2 font-medium">
+            <span>👈 Deslize para o lado para ver todos os diferenciais 👉</span>
           </div>
         </div>
       </section>
@@ -479,75 +487,150 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          {/* Categories Tab Selector */}
-          <div className="sticky top-18 z-30 bg-[#0c0a17]/95 backdrop-blur-md border-y border-gray-800 py-3 mb-8">
-            <div className="max-w-5xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar px-2">
-              {categories.map((cat: Category) => (
+          {/* Categories Tab Selector & View Mode Toggle */}
+          <div className="sticky top-16 sm:top-20 z-30 bg-[#0c0a17]/95 backdrop-blur-md border-y border-gray-800 py-2.5 mb-6">
+            <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 px-2">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                {categories.map((cat: Category) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                      selectedCategory === cat.id
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-2 ring-purple-400'
+                        : 'bg-charcoal-800 text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* View Mode Toggle (Mobile & Desktop) */}
+              <div className="flex items-center gap-1 bg-charcoal-800 p-1 rounded-xl border border-gray-700 flex-shrink-0">
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                    selectedCategory === cat.id
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-2 ring-purple-400'
-                      : 'bg-charcoal-800 text-gray-400 hover:text-gray-200'
+                  type="button"
+                  onClick={() => setMenuViewMode('compact')}
+                  title="Modo Lista Compacta (Rápido e Prático)"
+                  className={`p-1.5 rounded-lg transition ${
+                    menuViewMode === 'compact'
+                      ? 'bg-purple-600 text-white shadow'
+                      : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  {cat.name}
+                  <List className="w-4 h-4" />
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setMenuViewMode('grid')}
+                  title="Modo Grade com Fotos Grandes"
+                  className={`p-1.5 rounded-lg transition ${
+                    menuViewMode === 'grid'
+                      ? 'bg-purple-600 text-white shadow'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Products Grid */}
-          <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {products
-              .filter((p) => p.category_id === selectedCategory)
-              .map((product) => (
-                <div
-                  key={product.id}
-                  onClick={() => openProductModal(product)}
-                  className="rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition cursor-pointer overflow-hidden flex flex-col justify-between group shadow-lg"
-                >
-                  {product.image_url && (
-                    <div className="relative h-44 overflow-hidden bg-charcoal-900">
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute top-3 right-3">
+          {/* Products Container (Compact List by Default on Mobile or Grid) */}
+          {menuViewMode === 'compact' ? (
+            <div className="max-w-5xl mx-auto space-y-2.5 sm:space-y-3">
+              {products
+                .filter((p) => p.category_id === selectedCategory)
+                .map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => openProductModal(product)}
+                    className="p-3 sm:p-4 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition cursor-pointer flex items-center justify-between gap-3 shadow-md group"
+                  >
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <SectorBadge sector={product.sector} />
                       </div>
-                    </div>
-                  )}
-
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div>
-                      <h4 className="font-bold text-white text-base group-hover:text-purple-300 transition">
+                      <h4 className="font-bold text-white text-sm sm:text-base group-hover:text-purple-300 transition truncate">
                         {product.name}
                       </h4>
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-gray-400 line-clamp-2 leading-snug">
                         {product.description}
                       </p>
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="font-mono text-sm sm:text-base font-extrabold text-amber-400">
+                          {formatBRL(product.price_cents)}
+                        </span>
+                        <span className="text-[10px] text-purple-300 font-bold bg-purple-950/80 px-2 py-0.5 rounded-lg border border-purple-700/60 flex items-center gap-0.5">
+                          <Plus className="w-3 h-3" />
+                          <span>Adicionar</span>
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-800/80">
-                      <span className="font-mono text-base font-extrabold text-amber-400">
-                        {formatBRL(product.price_cents)}
-                      </span>
+                    {product.image_url && (
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-charcoal-900 flex-shrink-0 border border-gray-800/80 shadow-inner">
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {products
+                .filter((p) => p.category_id === selectedCategory)
+                .map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => openProductModal(product)}
+                    className="rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition cursor-pointer overflow-hidden flex flex-col justify-between group shadow-lg"
+                  >
+                    {product.image_url && (
+                      <div className="relative h-44 overflow-hidden bg-charcoal-900">
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute top-3 right-3">
+                          <SectorBadge sector={product.sector} />
+                        </div>
+                      </div>
+                    )}
 
-                      <button
-                        type="button"
-                        className="p-2 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 transition flex items-center gap-1 text-xs font-bold"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Adicionar</span>
-                      </button>
+                    <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                      <div>
+                        <h4 className="font-bold text-white text-base group-hover:text-purple-300 transition">
+                          {product.name}
+                        </h4>
+                        <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">
+                          {product.description}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-800/80">
+                        <span className="font-mono text-base font-extrabold text-amber-400">
+                          {formatBRL(product.price_cents)}
+                        </span>
+
+                        <button
+                          type="button"
+                          className="p-2 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 transition flex items-center gap-1 text-xs font-bold"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-          </div>
+                ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1126,6 +1209,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               )}`}
               target="_blank"
               rel="noreferrer"
+              onClick={() => {
+                setTimeout(() => setSubmittedOrder(null), 1000);
+              }}
               className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2 group transform active:scale-95"
             >
               <MessageCircle className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
@@ -1161,9 +1247,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 type="button"
                 onClick={() => setSubmittedOrder(null)}
-                className="w-full py-2.5 px-4 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-300 font-bold text-xs transition"
+                className="w-full py-2.5 px-4 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-400 hover:text-white font-bold text-xs transition"
               >
-                Fechar e Acompanhar pelo WhatsApp
+                Concluir e Fechar Janela
               </button>
             </div>
           </div>
