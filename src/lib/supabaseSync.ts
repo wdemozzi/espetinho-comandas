@@ -1,11 +1,12 @@
 import { getSupabaseClient, isSupabaseConfigured, getSupabaseDiagnostics } from './supabaseClient';
 import { Order, Tab, Profile, Product, OrderStatus } from '../types/database.types';
-import { soundService } from './sound';
+import { soundService, OrderReadyAlertData } from './sound';
 import { mergeOrders, mergeTabs } from './syncMerge';
 
 type SyncCallback = {
   onRemoteOrderCreated: (order: Order, tab?: Tab) => void;
   onRemoteItemStatusUpdated: (itemId: string, newStatus: OrderStatus) => void;
+  onRemoteOrderReady?: (data: OrderReadyAlertData) => void;
   onRemoteProfilesUpdated: (profiles: Profile[]) => void;
   onRemoteTabUpdated: (tab: Tab) => void;
   onFullSyncReceived: (data: {
@@ -86,7 +87,24 @@ class SupabaseSyncService {
               payload.payload.order,
               payload.payload.tab
             );
-            soundService.playSuccessDing();
+            if (payload.payload.order.status === 'ready') {
+              soundService.playOrderReady({
+                orderId: payload.payload.order.id,
+                orderNumber: payload.payload.order.order_number,
+                tableNumber: payload.payload.order.table_number,
+                customerName: payload.payload.order.customer_name,
+                itemsSummary: payload.payload.order.items?.map((i: any) => `${i.quantity}x ${i.product_name}`).join(', '),
+              });
+            } else {
+              soundService.playSuccessDing();
+            }
+            this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
+          }
+        })
+        .on('broadcast', { event: 'order_ready' }, (payload) => {
+          if (payload?.payload) {
+            this.callbacks?.onRemoteOrderReady?.(payload.payload);
+            soundService.playOrderReady(payload.payload);
             this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
         })
@@ -178,6 +196,20 @@ class SupabaseSyncService {
       this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
     } catch {
       // Ignore network errors in broadcast
+    }
+  }
+
+  public broadcastOrderReady(data: OrderReadyAlertData) {
+    if (!this.channel) return;
+    try {
+      this.channel.send({
+        type: 'broadcast',
+        event: 'order_ready',
+        payload: data,
+      });
+      this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
+    } catch {
+      // Ignore network errors
     }
   }
 

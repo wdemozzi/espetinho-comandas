@@ -21,7 +21,7 @@ import {
   CashMovementType,
 } from '../types/database.types';
 import { splitBillEqual, validateCustomSplit } from './currency';
-import { soundService } from './sound';
+import { soundService, OrderReadyAlertData } from './sound';
 import { supabaseSync } from './supabaseSync';
 import { detectProfanity, validateTextNoProfanity } from './validators';
 import { mergeOrders, mergeTabs, ORDER_STATUS_RANK } from './syncMerge';
@@ -274,6 +274,7 @@ class DatabaseStore {
   private splits: BillSplit[] = [];
   private cashShifts: CashShift[] = [];
   private listeners: Set<Listener> = new Set();
+  private orderReadyListeners: Set<(alert: OrderReadyAlertData) => void> = new Set();
   private nextOrderNumber: number = 101;
 
   constructor() {
@@ -431,6 +432,9 @@ class DatabaseStore {
         }
         this.persist();
         this.notify();
+      },
+      onRemoteOrderReady: (alertData) => {
+        this.notifyOrderReady(alertData);
       },
       onRemoteProfilesUpdated: (profiles) => {
         if (Array.isArray(profiles) && profiles.length > 0) {
@@ -594,6 +598,17 @@ class DatabaseStore {
   public subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  public onOrderReady(listener: (alert: OrderReadyAlertData) => void): () => void {
+    this.orderReadyListeners.add(listener);
+    return () => this.orderReadyListeners.delete(listener);
+  }
+
+  public notifyOrderReady(alert: OrderReadyAlertData) {
+    this.orderReadyListeners.forEach((fn) => {
+      try { fn(alert); } catch {}
+    });
   }
 
   private notify() {
@@ -1395,7 +1410,16 @@ class DatabaseStore {
         item.status = newStatus;
         if (newStatus === 'ready') {
           item.prepared_at = new Date().toISOString();
-          soundService.playOrderReady();
+          const alertData: OrderReadyAlertData = {
+            orderId: order.id,
+            orderNumber: order.order_number,
+            tableNumber: order.table_number,
+            customerName: order.customer_name,
+            itemsSummary: `${item.quantity}x ${item.product_name}`,
+          };
+          soundService.playOrderReady(alertData);
+          this.notifyOrderReady(alertData);
+          supabaseSync.broadcastOrderReady(alertData);
         } else if (newStatus === 'delivered') {
           item.delivered_at = new Date().toISOString();
         }
@@ -1436,7 +1460,19 @@ class DatabaseStore {
     }
 
     if (newStatus === 'ready') {
-      soundService.playOrderReady();
+      const alertData: OrderReadyAlertData = {
+        orderId: order.id,
+        orderNumber: order.order_number,
+        tableNumber: order.table_number,
+        customerName: order.customer_name,
+        itemsSummary: order.items
+          .filter((i) => i.status === 'ready' || i.status === 'delivered')
+          .map((i) => `${i.quantity}x ${i.product_name}`)
+          .join(', '),
+      };
+      soundService.playOrderReady(alertData);
+      this.notifyOrderReady(alertData);
+      supabaseSync.broadcastOrderReady(alertData);
     } else if (newStatus === 'preparing' || newStatus === 'delivered') {
       soundService.playSuccessDing();
     }

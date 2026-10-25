@@ -24,7 +24,9 @@ import {
   ArrowRightLeft,
   Link2,
   Unlink,
+  Volume2,
 } from 'lucide-react';
+import { soundService, OrderReadyAlertData } from '../../lib/sound';
 
 interface WaiterTablesPageProps {
   onNavigateToCashier?: (tabId: string) => void;
@@ -48,11 +50,22 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [tabNotes, setTabNotes] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [activeReadyAlert, setActiveReadyAlert] = useState<OrderReadyAlertData | null>(null);
+  const [testedAudio, setTestedAudio] = useState<boolean>(false);
 
   useEffect(() => {
-    return db.subscribe(() => {
+    const unsubDb = db.subscribe(() => {
       setTables(db.getTables());
     });
+
+    const unsubAlert = db.onOrderReady((alert) => {
+      setActiveReadyAlert(alert);
+    });
+
+    return () => {
+      unsubDb();
+      unsubAlert();
+    };
   }, []);
 
   const handleOpenTab = (e: React.FormEvent) => {
@@ -117,17 +130,72 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="px-3.5 py-1.5 rounded-xl bg-charcoal-900 border border-gray-700 flex items-center gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={async () => {
+              await soundService.requestNotificationPermission();
+              soundService.playOrderReady({
+                tableNumber: 3,
+                orderNumber: 100,
+                itemsSummary: 'Teste de sinal sonoro e vibração',
+              });
+              setTestedAudio(true);
+            }}
+            title="Ativar e testar alertas sonoros e notificações no celular"
+            className="px-3 py-1.5 rounded-xl bg-charcoal-900 hover:bg-charcoal-800 border border-emerald-600/70 text-emerald-400 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+          >
+            <Volume2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <span>{testedAudio ? 'Alertas Ativos ✅' : 'Ativar Avisos Sonoros'}</span>
+          </button>
+
+          <div className="px-3 py-1.5 rounded-xl bg-charcoal-900 border border-gray-700 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span className="text-xs text-gray-300 font-semibold">{freeTablesCount} Livres</span>
           </div>
-          <div className="px-3.5 py-1.5 rounded-xl bg-charcoal-900 border border-gray-700 flex items-center gap-2">
+          <div className="px-3 py-1.5 rounded-xl bg-charcoal-900 border border-gray-700 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
             <span className="text-xs text-gray-300 font-semibold">{activeTablesCount} Ocupadas</span>
           </div>
         </div>
       </div>
+
+      {/* FLOATING REAL-TIME ORDER READY TOAST FOR WAITERS */}
+      {activeReadyAlert && (
+        <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50 p-4 rounded-2xl bg-emerald-950/95 border-2 border-emerald-400 text-white shadow-2xl shadow-emerald-950/90 flex items-start justify-between gap-3 backdrop-blur-md animate-bounce">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-300 flex-shrink-0 animate-pulse">
+              <BellRing className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-800 text-emerald-100">
+                  Pronto na Brasa!
+                </span>
+                {activeReadyAlert.orderNumber && (
+                  <span className="text-xs font-bold text-emerald-300">
+                    #{activeReadyAlert.orderNumber}
+                  </span>
+                )}
+              </div>
+              <h3 className="font-black text-sm text-white mt-1">
+                {activeReadyAlert.tableNumber ? `Mesa ${String(activeReadyAlert.tableNumber).padStart(2, '0')}` : 'Balcão'}
+                {activeReadyAlert.customerName ? ` (${activeReadyAlert.customerName})` : ''}
+              </h3>
+              <p className="text-xs text-emerald-200 font-medium mt-0.5">
+                {activeReadyAlert.itemsSummary || 'Espetinhos prontos para servir!'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveReadyAlert(null)}
+            className="p-1 text-emerald-300 hover:text-white rounded-lg hover:bg-emerald-900/60 transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* EXPEDITION READY TO SERVE BANNER */}
       {tableReadyOrders.length > 0 && (
