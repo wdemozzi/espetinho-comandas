@@ -1,6 +1,7 @@
 import { getSupabaseClient, isSupabaseConfigured, getSupabaseDiagnostics } from './supabaseClient';
 import { Order, Tab, Profile, Product, OrderStatus } from '../types/database.types';
 import { soundService } from './sound';
+import { mergeOrders, mergeTabs } from './syncMerge';
 
 type SyncCallback = {
   onRemoteOrderCreated: (order: Order, tab?: Tab) => void;
@@ -238,14 +239,22 @@ class SupabaseSyncService {
             .maybeSingle();
 
           if (remoteRow && Array.isArray(remoteRow.data)) {
-            const map = new Map<string, any>();
-            for (const item of remoteRow.data) {
-              if (item && item.id) map.set(item.id, item);
+            if (id === 'orders') {
+              // Fusão inteligente anti-regressão: pedidos finalizados/entregues NUNCA regridem para preparando
+              finalData = mergeOrders(remoteRow.data as Order[], data as Order[]);
+            } else if (id === 'tabs') {
+              // Fusão inteligente de comandas: comandas pagas nunca voltam para abertas
+              finalData = mergeTabs(remoteRow.data as Tab[], data as Tab[]);
+            } else {
+              const map = new Map<string, any>();
+              for (const item of remoteRow.data) {
+                if (item && item.id) map.set(item.id, item);
+              }
+              for (const item of data) {
+                if (item && item.id) map.set(item.id, item);
+              }
+              finalData = Array.from(map.values());
             }
-            for (const item of data) {
-              if (item && item.id) map.set(item.id, item);
-            }
-            finalData = Array.from(map.values());
           }
         } catch {
           // Fallback to sending data directly if read fails

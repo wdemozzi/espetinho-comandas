@@ -24,6 +24,7 @@ import { splitBillEqual, validateCustomSplit } from './currency';
 import { soundService } from './sound';
 import { supabaseSync } from './supabaseSync';
 import { detectProfanity, validateTextNoProfanity } from './validators';
+import { mergeOrders, mergeTabs, ORDER_STATUS_RANK } from './syncMerge';
 
 // Initial Seed Data for CT Conveniência
 const INITIAL_ESTABLISHMENT: Establishment = {
@@ -277,7 +278,8 @@ class DatabaseStore {
 
   constructor() {
     this.loadFromStorage();
-    if (this.orders.length === 0 && this.tabs.length === 0) {
+    const alreadySeeded = typeof window !== 'undefined' ? localStorage.getItem('ct_demo_seeded') : null;
+    if (!alreadySeeded && this.orders.length === 0 && this.tabs.length === 0) {
       this.seedInitialActiveTab();
     }
     this.initRealtimeSync();
@@ -391,18 +393,11 @@ class DatabaseStore {
 
     supabaseSync.init({
       onRemoteOrderCreated: (remoteOrder, remoteTab) => {
-        // Prevent duplicate insertion
-        if (!this.orders.some((o) => o.id === remoteOrder.id)) {
-          this.orders.unshift(remoteOrder);
-        }
+        // Fusão inteligente anti-regressão: se o pedido já existe ou está entregue, preserva o status final
+        this.orders = mergeOrders(this.orders, [remoteOrder]);
         if (remoteTab) {
-          const tabIdx = this.tabs.findIndex((t) => t.id === remoteTab.id);
-          if (tabIdx !== -1) {
-            this.tabs[tabIdx] = remoteTab;
-          } else {
-            this.tabs.unshift(remoteTab);
-          }
-          if (remoteTab.table_id) {
+          this.tabs = mergeTabs(this.tabs, [remoteTab]);
+          if (remoteTab.table_id && remoteTab.status === 'open') {
             const table = this.tables.find((t) => t.id === remoteTab.table_id);
             if (table) table.status = 'ocupada';
           }
@@ -414,9 +409,23 @@ class DatabaseStore {
         for (const order of this.orders) {
           const item = order.items.find((i) => i.id === itemId);
           if (item) {
-            item.status = newStatus;
-            if (newStatus === 'ready') item.prepared_at = new Date().toISOString();
-            if (newStatus === 'delivered') item.delivered_at = new Date().toISOString();
+            const currentRank = ORDER_STATUS_RANK[item.status] ?? 0;
+            const newRank = ORDER_STATUS_RANK[newStatus] ?? 0;
+            // Só avança se o novo status for maior ou igual (impede regressão de delivered para preparing)
+            if (newRank >= currentRank) {
+              item.status = newStatus;
+              if (newStatus === 'ready') item.prepared_at = new Date().toISOString();
+              if (newStatus === 'delivered') item.delivered_at = new Date().toISOString();
+              order.updated_at = new Date().toISOString();
+
+              const allDelivered = order.items.every((i) => i.status === 'delivered');
+              const anyReady = order.items.some((i) => i.status === 'ready');
+              const anyPreparing = order.items.some((i) => i.status === 'preparing');
+
+              if (allDelivered) order.status = 'delivered';
+              else if (anyReady) order.status = 'ready';
+              else if (anyPreparing) order.status = 'preparing';
+            }
             break;
           }
         }
@@ -431,12 +440,7 @@ class DatabaseStore {
         }
       },
       onRemoteTabUpdated: (tab) => {
-        const idx = this.tabs.findIndex((t) => t.id === tab.id);
-        if (idx !== -1) {
-          this.tabs[idx] = tab;
-        } else {
-          this.tabs.unshift(tab);
-        }
+        this.tabs = mergeTabs(this.tabs, [tab]);
         this.persist();
         this.notify();
       },
@@ -445,14 +449,10 @@ class DatabaseStore {
           this.profiles = data.profiles;
         }
         if (data.orders && data.orders.length > 0) {
-          const existingIds = new Set(this.orders.map((o) => o.id));
-          const newOrders = data.orders.filter((o) => !existingIds.has(o.id));
-          this.orders = [...newOrders, ...this.orders];
+          this.orders = mergeOrders(this.orders, data.orders);
         }
         if (data.tabs && data.tabs.length > 0) {
-          const existingTabIds = new Set(this.tabs.map((t) => t.id));
-          const newTabs = data.tabs.filter((t) => !existingTabIds.has(t.id));
-          this.tabs = [...newTabs, ...this.tabs];
+          this.tabs = mergeTabs(this.tabs, data.tabs);
         }
         if (data.products && data.products.length > 0) {
           this.products = data.products;
@@ -586,6 +586,9 @@ class DatabaseStore {
     this.orders.push(order);
     this.tabs.push(tab);
     table.active_tab = tab;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ct_demo_seeded', 'true');
+    }
   }
 
   public subscribe(listener: Listener): () => void {
@@ -1410,6 +1413,7 @@ class DatabaseStore {
           order.status = 'preparing';
         }
 
+        order.updated_at = new Date().toISOString();
         this.persist();
         this.notify();
         supabaseSync.broadcastItemStatus(itemId, newStatus);
@@ -1446,6 +1450,7 @@ class DatabaseStore {
     else if (anyPreparing) order.status = 'preparing';
     else order.status = newStatus;
 
+    order.updated_at = new Date().toISOString();
     this.persist();
     this.notify();
     supabaseSync.broadcastOrder(order);
@@ -1657,11 +1662,44 @@ class DatabaseStore {
       }
     });
 
+    // Marcar todos os pedidos da comanda encerrada como entregues (delivered) para não ficarem pendentes na cozinha ou no garçom
+    const primaryTable = this.tables.find((t) => t.id === primaryTableId);
+    const tableNumber = primaryTable?.table_number;
+
+    for (const order of this.orders) {
+      const isOrderOfTab = tab.orders?.some((o) => o.id === order.id) || (tableNumber != null && order.table_number === tableNumber);
+      if (isOrderOfTab && order.status !== 'cancelled' && order.status !== 'delivered') {
+        order.status = 'delivered';
+        order.updated_at = new Date().toISOString();
+        for (const item of order.items) {
+          if (item.status !== 'cancelled' && item.status !== 'delivered') {
+            item.status = 'delivered';
+            item.delivered_at = new Date().toISOString();
+          }
+        }
+      }
+    }
+    if (tab.orders) {
+      for (const order of tab.orders) {
+        if (order.status !== 'cancelled' && order.status !== 'delivered') {
+          order.status = 'delivered';
+          order.updated_at = new Date().toISOString();
+          for (const item of order.items) {
+            if (item.status !== 'cancelled') {
+              item.status = 'delivered';
+              item.delivered_at = new Date().toISOString();
+            }
+          }
+        }
+      }
+    }
+
     soundService.playSuccessDing();
     this.persist();
     this.notify();
     supabaseSync.broadcastTab(tab);
     supabaseSync.saveToCloud('tabs', this.tabs);
+    supabaseSync.saveToCloud('orders', this.orders);
     return tab;
   }
 

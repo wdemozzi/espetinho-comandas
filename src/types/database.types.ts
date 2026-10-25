@@ -114,6 +114,7 @@ export interface Tab {
   splits?: BillSplit[];
   joined_table_ids?: string[];
   joined_table_labels?: string[];
+  updated_at?: string;
 }
 
 export interface OrderItem {
@@ -132,6 +133,7 @@ export interface OrderItem {
   prepared_at: string | null;
   delivered_at: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Order {
@@ -148,6 +150,7 @@ export interface Order {
   general_notes: string | null;
   total_cents: number;
   created_at: string;
+  updated_at?: string;
   items: OrderItem[];
   table_number?: number;
 }
