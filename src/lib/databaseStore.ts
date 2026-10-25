@@ -16,6 +16,9 @@ import {
   ProductionSector,
   CustomerLead,
   TableStatus,
+  CashShift,
+  CashMovement,
+  CashMovementType,
 } from '../types/database.types';
 import { splitBillEqual, validateCustomSplit } from './currency';
 import { soundService } from './sound';
@@ -34,6 +37,8 @@ const INITIAL_ESTABLISHMENT: Establishment = {
   logo_url: '/ct-logo.png',
   banner_url: '/ct-logo.png',
   is_active: true,
+  service_fee_enabled: false,
+  service_fee_percent: 10,
   created_at: new Date().toISOString(),
 };
 
@@ -266,6 +271,7 @@ class DatabaseStore {
   private orders: Order[] = [];
   private payments: Payment[] = [];
   private splits: BillSplit[] = [];
+  private cashShifts: CashShift[] = [];
   private listeners: Set<Listener> = new Set();
   private nextOrderNumber: number = 101;
 
@@ -329,7 +335,12 @@ class DatabaseStore {
       if (storedEstablishment) {
         const parsed = JSON.parse(storedEstablishment);
         if (parsed && parsed.name) {
-          this.establishment = { ...parsed, phone: '(44) 99735-7463' };
+          this.establishment = {
+            ...parsed,
+            phone: '(44) 99735-7463',
+            service_fee_enabled: parsed.service_fee_enabled ?? false,
+            service_fee_percent: parsed.service_fee_percent ?? 10,
+          };
         }
       }
 
@@ -343,6 +354,14 @@ class DatabaseStore {
         const parsed = JSON.parse(storedPayments);
         if (Array.isArray(parsed)) {
           this.payments = parsed;
+        }
+      }
+
+      const storedCashShifts = localStorage.getItem('ct_cash_shifts');
+      if (storedCashShifts) {
+        const parsed = JSON.parse(storedCashShifts);
+        if (Array.isArray(parsed)) {
+          this.cashShifts = parsed;
         }
       }
     } catch (e) {
@@ -361,6 +380,7 @@ class DatabaseStore {
       localStorage.setItem('ct_establishment', JSON.stringify(this.establishment));
       localStorage.setItem('ct_next_order_num', String(this.nextOrderNumber));
       localStorage.setItem('ct_payments', JSON.stringify(this.payments));
+      localStorage.setItem('ct_cash_shifts', JSON.stringify(this.cashShifts));
     } catch (e) {
       console.warn('Erro ao salvar no localStorage:', e);
     }
@@ -1643,6 +1663,193 @@ class DatabaseStore {
     supabaseSync.broadcastTab(tab);
     supabaseSync.saveToCloud('tabs', this.tabs);
     return tab;
+  }
+
+  // --- CASH SHIFT & GAVETA MANAGEMENT ---
+  public getCurrentCashShift(): CashShift | undefined {
+    return this.cashShifts.find((s) => s.status === 'open');
+  }
+
+  public getCashShifts(): CashShift[] {
+    return [...this.cashShifts].sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
+  }
+
+  public openCashShift(params: {
+    initial_cash_cents: number;
+    opened_by_user_id: string;
+    opened_by_name: string;
+    notes?: string;
+  }): CashShift {
+    const existing = this.getCurrentCashShift();
+    if (existing) {
+      throw new Error(`Já existe um caixa aberto iniciado às ${new Date(existing.opened_at).toLocaleTimeString('pt-BR')}`);
+    }
+
+    const shiftId = `shift-${Date.now()}`;
+    const newShift: CashShift = {
+      id: shiftId,
+      establishment_id: this.establishment.id,
+      opened_at: new Date().toISOString(),
+      closed_at: null,
+      opened_by_user_id: params.opened_by_user_id,
+      opened_by_name: params.opened_by_name,
+      closed_by_user_id: null,
+      closed_by_name: null,
+      initial_cash_cents: params.initial_cash_cents,
+      status: 'open',
+      movements: [],
+      notes: params.notes || null,
+    };
+
+    this.cashShifts.unshift(newShift);
+    this.persist();
+    this.notify();
+    soundService.playSuccessDing();
+    return newShift;
+  }
+
+  public addCashMovement(params: {
+    shift_id: string;
+    type: CashMovementType;
+    amount_cents: number;
+    reason: string;
+    created_by_name: string;
+  }): CashMovement {
+    const shift = this.cashShifts.find((s) => s.id === params.shift_id);
+    if (!shift || shift.status !== 'open') {
+      throw new Error('Caixa não está aberto para registrar movimentação');
+    }
+    if (params.amount_cents <= 0) {
+      throw new Error('O valor da movimentação deve ser maior que R$ 0,00');
+    }
+
+    const movement: CashMovement = {
+      id: `mov-${Date.now()}`,
+      shift_id: shift.id,
+      type: params.type,
+      amount_cents: params.amount_cents,
+      reason: params.reason,
+      created_at: new Date().toISOString(),
+      created_by_name: params.created_by_name,
+    };
+
+    shift.movements.push(movement);
+    this.persist();
+    this.notify();
+    soundService.playSuccessDing();
+    return movement;
+  }
+
+  public getCashShiftSummary(shiftId?: string) {
+    const shift = shiftId
+      ? this.cashShifts.find((s) => s.id === shiftId)
+      : this.getCurrentCashShift() || this.cashShifts[0];
+
+    if (!shift) {
+      return {
+        shift: undefined,
+        initial_cash_cents: 0,
+        total_cash_sales_cents: 0,
+        total_pix_sales_cents: 0,
+        total_card_sales_cents: 0,
+        total_sales_cents: 0,
+        total_sangrias_cents: 0,
+        total_suprimentos_cents: 0,
+        expected_cash_cents: 0,
+        actual_cash_cents: 0,
+        difference_cents: 0,
+      };
+    }
+
+    const startTime = new Date(shift.opened_at).getTime();
+    const endTime = shift.closed_at ? new Date(shift.closed_at).getTime() : Date.now();
+
+    const paymentsInShift = this.payments.filter((p) => {
+      const pTime = new Date(p.created_at).getTime();
+      return pTime >= startTime && pTime <= endTime;
+    });
+
+    let total_cash_sales_cents = 0;
+    let total_pix_sales_cents = 0;
+    let total_card_sales_cents = 0;
+
+    for (const p of paymentsInShift) {
+      if (p.method === 'cash') total_cash_sales_cents += p.amount_cents;
+      else if (p.method === 'pix') total_pix_sales_cents += p.amount_cents;
+      else if (p.method === 'credit_card' || p.method === 'debit_card') total_card_sales_cents += p.amount_cents;
+    }
+
+    const total_sales_cents = total_cash_sales_cents + total_pix_sales_cents + total_card_sales_cents;
+
+    let total_sangrias_cents = 0;
+    let total_suprimentos_cents = 0;
+
+    for (const m of shift.movements) {
+      if (m.type === 'sangria') total_sangrias_cents += m.amount_cents;
+      if (m.type === 'suprimento') total_suprimentos_cents += m.amount_cents;
+    }
+
+    const expected_cash_cents =
+      shift.initial_cash_cents + total_cash_sales_cents + total_suprimentos_cents - total_sangrias_cents;
+
+    const actual_cash_cents = shift.actual_cash_cents ?? expected_cash_cents;
+    const difference_cents = shift.difference_cents ?? (actual_cash_cents - expected_cash_cents);
+
+    return {
+      shift,
+      initial_cash_cents: shift.initial_cash_cents,
+      total_cash_sales_cents,
+      total_pix_sales_cents,
+      total_card_sales_cents,
+      total_sales_cents,
+      total_sangrias_cents,
+      total_suprimentos_cents,
+      expected_cash_cents,
+      actual_cash_cents,
+      difference_cents,
+    };
+  }
+
+  public closeCashShift(params: {
+    shift_id: string;
+    closed_by_user_id: string;
+    closed_by_name: string;
+    actual_cash_cents: number;
+    notes?: string;
+  }): CashShift {
+    const shift = this.cashShifts.find((s) => s.id === params.shift_id);
+    if (!shift || shift.status !== 'open') {
+      throw new Error('Caixa não encontrado ou já encerrado');
+    }
+
+    const summary = this.getCashShiftSummary(shift.id);
+
+    shift.status = 'closed';
+    shift.closed_at = new Date().toISOString();
+    shift.closed_by_user_id = params.closed_by_user_id;
+    shift.closed_by_name = params.closed_by_name;
+    shift.actual_cash_cents = params.actual_cash_cents;
+    shift.total_cash_sales_cents = summary.total_cash_sales_cents;
+    shift.total_pix_sales_cents = summary.total_pix_sales_cents;
+    shift.total_card_sales_cents = summary.total_card_sales_cents;
+    shift.expected_cash_cents = summary.expected_cash_cents;
+    shift.difference_cents = params.actual_cash_cents - summary.expected_cash_cents;
+    if (params.notes) shift.notes = params.notes;
+
+    soundService.playSuccessDing();
+    this.persist();
+    this.notify();
+    return shift;
+  }
+
+  // --- SERVICE FEE CONFIGURATION ---
+  public updateServiceFeeSettings(params: { enabled: boolean; percent?: number }) {
+    this.establishment.service_fee_enabled = params.enabled;
+    if (typeof params.percent === 'number') {
+      this.establishment.service_fee_percent = params.percent;
+    }
+    this.persist();
+    this.notify();
   }
 
   // --- CRM & MARKETING: CUSTOMER LEADS ---

@@ -11,6 +11,7 @@ import { LandingPage } from './pages/public/LandingPage';
 import { OperatorSwitchModal } from './components/common/OperatorSwitchModal';
 
 import { StaffLoginTerminal } from './components/common/StaffLoginTerminal';
+import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 
 function AppContent() {
   const { currentUser } = useAuth();
@@ -202,6 +203,9 @@ function AppContent() {
           onSuccess={() => setIsStaffLoginModalOpen(false)}
         />
       )}
+
+      {/* PWA Mobile Install Prompt */}
+      <PwaInstallPrompt />
     </div>
   );
 }

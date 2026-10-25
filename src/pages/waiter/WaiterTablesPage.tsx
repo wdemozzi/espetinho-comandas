@@ -7,6 +7,7 @@ import { TableStatusBadge } from '../../components/common/Badge';
 import { OrderLauncherModal } from '../../components/waiter/OrderLauncherModal';
 import { QrCodeModal } from '../../components/common/QrCodeModal';
 import { TableTransferModal } from '../../components/waiter/TableTransferModal';
+import { PreBillModal } from '../../components/cashier/PreBillModal';
 import { detectProfanity, validateTextNoProfanity } from '../../lib/validators';
 import {
   UtensilsCrossed,
@@ -41,6 +42,7 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
     table: RestaurantTable;
     tab: Tab;
   } | null>(null);
+  const [selectedTabForPreBill, setSelectedTabForPreBill] = useState<Tab | null>(null);
   const [openTabModalTable, setOpenTabModalTable] = useState<RestaurantTable | null>(null);
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
@@ -327,6 +329,15 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
                       <span>Lançar Nova Rodada</span>
                     </button>
 
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTabForPreBill(activeTab)}
+                      className="w-full py-1.5 px-3 rounded-lg bg-charcoal-800 hover:bg-gray-700 text-gray-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition"
+                    >
+                      <Receipt className="w-3.5 h-3.5 text-ember-400" />
+                      <span>Ver Pré-Conta (Conferência)</span>
+                    </button>
+
                     {onNavigateToCashier && (
                       <button
                         type="button"
@@ -487,6 +498,15 @@ export const WaiterTablesPage: React.FC<WaiterTablesPageProps> = ({ onNavigateTo
           onSuccess={() => {
             setTables(db.getTables());
           }}
+        />
+      )}
+
+      {/* Modal: Pre-Bill Receipt */}
+      {selectedTabForPreBill && (
+        <PreBillModal
+          tab={selectedTabForPreBill}
+          establishment={db.getEstablishment()}
+          onClose={() => setSelectedTabForPreBill(null)}
         />
       )}
     </div>

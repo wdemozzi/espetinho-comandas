@@ -54,6 +54,7 @@ import {
   Sparkles,
   Send,
   ShoppingBag,
+  Percent,
 } from 'lucide-react';
 
 type PeriodFilter = 'today' | 'yesterday' | 'month' | 'year' | 'all' | 'custom';
@@ -68,6 +69,11 @@ export const AdminDashboard: React.FC = () => {
   const [ordersState, setOrdersState] = useState<Order[]>(db.getOrders());
   const [leadsState, setLeadsState] = useState<CustomerLead[]>(db.getCustomerLeads());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Service Fee Configuration State
+  const establishment = db.getEstablishment();
+  const [serviceFeeEnabled, setServiceFeeEnabled] = useState<boolean>(establishment.service_fee_enabled === true);
+  const [serviceFeePercent, setServiceFeePercent] = useState<number>(establishment.service_fee_percent || 10);
 
   // Period filter for Sales Report
   const [filterPeriod, setFilterPeriod] = useState<PeriodFilter>('today');
@@ -863,6 +869,62 @@ END $$;`;
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+
+            {/* SERVICE FEE & OPERATIONAL SETTINGS CARD */}
+            <div className="pt-4 border-t border-gray-800">
+              <div className="p-4 sm:p-5 rounded-2xl bg-charcoal-850 border border-gray-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Percent className="w-4 h-4 text-ember-400" />
+                      <span>Taxa de Serviço Opcional (10% Garçom / Couvert)</span>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Quando ativada, inclui a sugestão de taxa de serviço no fechamento de conta e na pré-conta. Pode ser ativada ou desativada a qualquer momento.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {serviceFeeEnabled && (
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs font-bold text-gray-300">Percentual (%):</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="30"
+                          value={serviceFeePercent}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 10;
+                            setServiceFeePercent(val);
+                            db.updateServiceFeeSettings({ enabled: true, percent: val });
+                          }}
+                          className="w-16 px-2 py-1 bg-charcoal-800 border border-gray-700 rounded-lg text-white font-mono font-bold text-xs text-center"
+                        />
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextState = !serviceFeeEnabled;
+                        setServiceFeeEnabled(nextState);
+                        db.updateServiceFeeSettings({ enabled: nextState, percent: serviceFeePercent });
+                        setToastMessage(nextState ? `Taxa de serviço ativada em ${serviceFeePercent}%!` : 'Taxa de serviço desativada.');
+                        setTimeout(() => setToastMessage(null), 3000);
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition ${
+                        serviceFeeEnabled
+                          ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
+                          : 'bg-charcoal-800 border-gray-700 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {serviceFeeEnabled ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4" />}
+                      <span>{serviceFeeEnabled ? 'Ativada' : 'Desativada'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

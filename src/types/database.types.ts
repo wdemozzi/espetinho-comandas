@@ -21,6 +21,8 @@ export interface Establishment {
   logo_url: string | null;
   banner_url: string | null;
   is_active: boolean;
+  service_fee_enabled?: boolean;
+  service_fee_percent?: number;
   created_at: string;
 }
 
@@ -196,3 +198,37 @@ export interface CustomerLead {
   primary_channel: 'balcao' | 'mesa' | 'ambos';
   order_history: { order_number: number; date: string; total_cents: number; type: string }[];
 }
+
+export type CashMovementType = 'sangria' | 'suprimento';
+
+export interface CashMovement {
+  id: string;
+  shift_id: string;
+  type: CashMovementType;
+  amount_cents: number;
+  reason: string;
+  created_at: string;
+  created_by_name: string;
+}
+
+export interface CashShift {
+  id: string;
+  establishment_id: string;
+  opened_at: string;
+  closed_at: string | null;
+  opened_by_user_id: string;
+  opened_by_name: string;
+  closed_by_user_id: string | null;
+  closed_by_name: string | null;
+  initial_cash_cents: number;
+  status: 'open' | 'closed';
+  movements: CashMovement[];
+  notes: string | null;
+  actual_cash_cents?: number;
+  total_cash_sales_cents?: number;
+  total_pix_sales_cents?: number;
+  total_card_sales_cents?: number;
+  expected_cash_cents?: number;
+  difference_cents?: number;
+}
+

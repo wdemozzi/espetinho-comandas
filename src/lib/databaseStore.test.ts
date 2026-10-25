@@ -238,4 +238,70 @@ describe('DatabaseStore & Persistence', () => {
     const updatedTable5 = db.getTableById('t5')!;
     expect(updatedTable5.linked_table_id).toBe(table4.id);
   });
+
+  it('should manage cash shift lifecycle, movements, and closure reconciliation', () => {
+    // Open a cash shift with R$ 100,00 (10000 cents)
+    const shift = db.openCashShift({
+      initial_cash_cents: 10000,
+      opened_by_user_id: 'u-admin',
+      opened_by_name: 'Carlos Admin',
+      notes: 'Turno de Teste',
+    });
+
+    expect(shift.status).toBe('open');
+    expect(shift.initial_cash_cents).toBe(10000);
+    expect(db.getCurrentCashShift()?.id).toBe(shift.id);
+
+    // Register a Sangria (R$ 30,00 for ice/charcoal)
+    const sangria = db.addCashMovement({
+      shift_id: shift.id,
+      type: 'sangria',
+      amount_cents: 3000,
+      reason: 'Compra de gelo',
+      created_by_name: 'Carlos Admin',
+    });
+    expect(sangria.type).toBe('sangria');
+
+    // Register a Suprimento (R$ 20,00 change)
+    const suprimento = db.addCashMovement({
+      shift_id: shift.id,
+      type: 'suprimento',
+      amount_cents: 2000,
+      reason: 'Moedas de troco',
+      created_by_name: 'Carlos Admin',
+    });
+    expect(suprimento.type).toBe('suprimento');
+
+    // Check summary before sales:
+    // Initial (100) + Suprimento (20) - Sangria (30) = 90 (9000 cents)
+    const summary = db.getCashShiftSummary(shift.id);
+    expect(summary.total_sangrias_cents).toBe(3000);
+    expect(summary.total_suprimentos_cents).toBe(2000);
+    expect(summary.expected_cash_cents).toBe(9000);
+
+    // Close cash shift with exact counted R$ 90,00
+    const closedShift = db.closeCashShift({
+      shift_id: shift.id,
+      closed_by_user_id: 'u-admin',
+      closed_by_name: 'Carlos Admin',
+      actual_cash_cents: 9000,
+      notes: 'Fechamento perfeito',
+    });
+
+    expect(closedShift.status).toBe('closed');
+    expect(closedShift.difference_cents).toBe(0);
+    expect(db.getCurrentCashShift()).toBeUndefined();
+  });
+
+  it('should toggle and configure optional service fee settings', () => {
+    expect(db.getEstablishment().service_fee_enabled).toBe(false);
+
+    db.updateServiceFeeSettings({ enabled: true, percent: 10 });
+    expect(db.getEstablishment().service_fee_enabled).toBe(true);
+    expect(db.getEstablishment().service_fee_percent).toBe(10);
+
+    db.updateServiceFeeSettings({ enabled: false });
+    expect(db.getEstablishment().service_fee_enabled).toBe(false);
+  });
 });
+

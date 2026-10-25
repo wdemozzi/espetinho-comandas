@@ -1,0 +1,25 @@
+{
+  "name": "CT Conveniência & Espetinhos",
+  "short_name": "CT Espetos",
+  "description": "Cardápio Digital, Comandas em Tempo Real e Gestão para Espetinhos e Bar",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0c0a17",
+  "theme_color": "#e11d48",
+  "icons": [
+    {
+      "src": "/ct-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/ct-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["food", "business", "utilities"]
+}

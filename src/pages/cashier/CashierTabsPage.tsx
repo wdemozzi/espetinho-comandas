@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatBRL, calculateRemainingBalance, parseBRLToCents } from '../../lib/currency';
 import { TabStatusBadge } from '../../components/common/Badge';
 import { BillSplitModal } from '../../components/cashier/BillSplitModal';
+import { PreBillModal } from '../../components/cashier/PreBillModal';
+import { CashShiftModal } from '../../components/cashier/CashShiftModal';
 import {
   Receipt,
   Divide,
@@ -13,6 +15,7 @@ import {
   Banknote,
   CheckCircle2,
   Lock,
+  Unlock,
   Clock,
   History,
   AlertCircle,
@@ -21,6 +24,7 @@ import {
   BellRing,
   MessageCircle,
   ShoppingBag,
+  Coins,
 } from 'lucide-react';
 
 interface CashierTabsPageProps {
@@ -33,6 +37,8 @@ export const CashierTabsPage: React.FC<CashierTabsPageProps> = ({ initialTabId }
   const [selectedTabId, setSelectedTabId] = useState<string | null>(initialTabId || null);
   const [activeSplitTab, setActiveSplitTab] = useState<Tab | null>(null);
   const [activeViewMode, setActiveViewMode] = useState<'open' | 'history'>('open');
+  const [isPreBillOpen, setIsPreBillOpen] = useState<boolean>(false);
+  const [isCashShiftModalOpen, setIsCashShiftModalOpen] = useState<boolean>(false);
 
   // Fast direct payment form
   const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
@@ -123,31 +129,46 @@ export const CashierTabsPage: React.FC<CashierTabsPageProps> = ({ initialTabId }
           </div>
         </div>
 
-        {/* View mode toggle */}
-        <div className="flex items-center gap-1 bg-charcoal-900 p-1 rounded-xl border border-gray-700">
+        {/* Controls: Cash Shift Drawer & View mode toggle */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setActiveViewMode('open')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-              activeViewMode === 'open'
-                ? 'bg-charcoal-800 text-ember-400 shadow'
-                : 'text-gray-400 hover:text-gray-200'
+            type="button"
+            onClick={() => setIsCashShiftModalOpen(true)}
+            className={`px-3 py-1.5 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition ${
+              db.getCurrentCashShift()
+                ? 'bg-emerald-950/70 border-emerald-500/80 text-emerald-300 hover:bg-emerald-900 shadow-md shadow-emerald-950/40'
+                : 'bg-amber-950/70 border-amber-500/80 text-amber-300 hover:bg-amber-900 shadow-md shadow-amber-950/40'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Comandas Abertas ({openTabs.length})</span>
+            {db.getCurrentCashShift() ? <Unlock className="w-3.5 h-3.5 text-emerald-400" /> : <Lock className="w-3.5 h-3.5 text-amber-400" />}
+            <span>{db.getCurrentCashShift() ? 'Caixa Aberto (Gaveta)' : 'Abrir Caixa do Dia'}</span>
           </button>
 
-          <button
-            onClick={() => setActiveViewMode('history')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-              activeViewMode === 'history'
-                ? 'bg-charcoal-800 text-emerald-400 shadow'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <History className="w-3.5 h-3.5" />
-            <span>Histórico Encerradas ({historyTabs.length})</span>
-          </button>
+          <div className="flex items-center gap-1 bg-charcoal-900 p-1 rounded-xl border border-gray-700">
+            <button
+              onClick={() => setActiveViewMode('open')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                activeViewMode === 'open'
+                  ? 'bg-charcoal-800 text-ember-400 shadow'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Comandas Abertas ({openTabs.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveViewMode('history')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                activeViewMode === 'history'
+                  ? 'bg-charcoal-800 text-emerald-400 shadow'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Histórico Encerradas ({historyTabs.length})</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -318,18 +339,29 @@ export const CashierTabsPage: React.FC<CashierTabsPageProps> = ({ initialTabId }
                     {selectedTab.customer_phone && ` • Tel: ${selectedTab.customer_phone}`}
                   </p>
                 </div>
-
-                {/* THE HIGHLIGHTED "DIVIDIR CONTA" BUTTON (Rule 10.1) */}
-                {selectedTab.status !== 'paid' && selectedTab.status !== 'cancelled' && (
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveSplitTab(selectedTab)}
-                    className="py-3 px-5 rounded-xl bg-gradient-to-r from-ember-600 via-ember-500 to-amber-500 hover:from-ember-500 hover:to-amber-400 text-white font-extrabold text-sm shadow-xl shadow-ember-600/30 ring-2 ring-ember-400/50 flex items-center gap-2 transition transform hover:scale-[1.02]"
+                    onClick={() => setIsPreBillOpen(true)}
+                    className="py-2.5 px-3.5 rounded-xl bg-charcoal-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-xs flex items-center gap-1.5 transition"
+                    title="Conferência de itens e comprovante pré-conta"
                   >
-                    <Divide className="w-5 h-5" />
-                    <span>DIVIDIR CONTA</span>
+                    <Receipt className="w-4 h-4 text-ember-400" />
+                    <span>Pré-Conta / Cupom</span>
                   </button>
-                )}
+
+                  {/* THE HIGHLIGHTED "DIVIDIR CONTA" BUTTON (Rule 10.1) */}
+                  {selectedTab.status !== 'paid' && selectedTab.status !== 'cancelled' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveSplitTab(selectedTab)}
+                      className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-ember-600 via-ember-500 to-amber-500 hover:from-ember-500 hover:to-amber-400 text-white font-extrabold text-xs shadow-xl shadow-ember-600/30 ring-2 ring-ember-400/50 flex items-center gap-1.5 transition transform hover:scale-[1.02]"
+                    >
+                      <Divide className="w-4 h-4" />
+                      <span>DIVIDIR CONTA</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Financial Balance Summary (Rule 10.5) */}
@@ -607,6 +639,21 @@ export const CashierTabsPage: React.FC<CashierTabsPageProps> = ({ initialTabId }
           }}
         />
       )}
+
+      {/* Pre-Bill Modal */}
+      {isPreBillOpen && selectedTab && (
+        <PreBillModal
+          tab={selectedTab}
+          establishment={db.getEstablishment()}
+          onClose={() => setIsPreBillOpen(false)}
+        />
+      )}
+
+      {/* Cash Shift (Gaveta) Modal */}
+      <CashShiftModal
+        isOpen={isCashShiftModalOpen}
+        onClose={() => setIsCashShiftModalOpen(false)}
+      />
     </div>
   );
 };
