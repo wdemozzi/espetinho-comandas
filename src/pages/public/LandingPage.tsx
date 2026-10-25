@@ -39,6 +39,22 @@ interface LandingPageProps {
   onOrderCompleted?: (orderId: string) => void;
 }
 
+const InstagramIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
+
 interface CartItem {
   product: Product;
   quantity: number;
@@ -232,7 +248,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     },
     {
       q: 'Onde a CT Conveniência fica localizada?',
-      a: 'Estamos localizados na Av. Paraná, 1250 - Centro. Fácil acesso com estacionamento em frente.',
+      a: 'Estamos localizados na Avenida Rio Grande do Norte, 4365, Umuarama - PR (CEP 87504-000). Fácil acesso com estacionamento em frente.',
     },
   ];
 
@@ -281,6 +297,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Quick CTAs */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <a
+              href="https://www.instagram.com/ct_conveniencia/"
+              target="_blank"
+              rel="noreferrer"
+              title="Instagram Oficial @ct_conveniencia"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-pink-950/60 hover:bg-pink-900/80 text-pink-300 border border-pink-700/60 text-xs font-bold transition shadow-sm flex items-center gap-1.5"
+            >
+              <InstagramIcon className="w-4 h-4 text-pink-400" />
+              <span className="hidden sm:inline">Instagram</span>
+            </a>
+
             <a
               href="https://wa.me/5544997357463?text=Ol%C3%A1%2C%20gostaria%20de%20fazer%20um%20pedido%20na%20CT%20Conveni%C3%AAncia!"
               target="_blank"
@@ -336,7 +363,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <div className="flex items-center gap-2 bg-charcoal-850 px-3 py-1.5 rounded-xl border border-gray-800">
                   <MapPin className="w-4 h-4 text-purple-400" />
-                  <span>Av. Paraná, 1250 - Centro</span>
+                  <span>Av. Rio Grande do Norte, 4365 - Umuarama</span>
                 </div>
               </div>
 
@@ -773,9 +800,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 flex flex-wrap items-center gap-3">
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Av. Paraná, 1250 - Centro')}`}
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Avenida Rio Grande do Norte, 4365, Umuarama, PR, 87504-000')}`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 transition"
@@ -783,6 +810,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <MapPin className="w-4 h-4" />
                   <span>Como Chegar (Google Maps)</span>
                   <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                <a
+                  href="https://www.instagram.com/ct_conveniencia/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-pink-950/80 hover:bg-pink-900 text-pink-300 border border-pink-700/60 font-bold text-xs shadow-md transition"
+                >
+                  <InstagramIcon className="w-4 h-4 text-pink-400" />
+                  <span>@ct_conveniencia</span>
                 </a>
               </div>
             </div>
@@ -876,23 +913,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <a href="#faq" className="hover:text-purple-300 transition">Perguntas Frequentes</a>
           </div>
 
-          {/* Direct WhatsApp Contact */}
-          <div>
+          {/* Direct Contacts */}
+          <div className="flex items-center gap-2">
+            <a
+              href="https://www.instagram.com/ct_conveniencia/"
+              target="_blank"
+              rel="noreferrer"
+              className="px-3.5 py-2 rounded-xl bg-pink-950/80 hover:bg-pink-900 text-pink-300 border border-pink-700/60 text-xs font-bold transition flex items-center gap-1.5"
+            >
+              <InstagramIcon className="w-4 h-4 text-pink-400" />
+              <span>Instagram</span>
+            </a>
+
             <a
               href="https://wa.me/5544997357463?text=Ol%C3%A1%2C%20gostaria%20de%20tirar%20uma%20d%C3%BAvida%20na%20CT%20Conveni%C3%AAncia!"
               target="_blank"
               rel="noreferrer"
-              className="px-4 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 text-xs font-bold transition flex items-center gap-2"
+              className="px-3.5 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 text-xs font-bold transition flex items-center gap-1.5"
             >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Fale Conosco</span>
+              <MessageCircle className="w-4 h-4 text-emerald-400" />
+              <span>WhatsApp</span>
             </a>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto mt-6 pt-6 border-t border-gray-900 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-gray-600">
+        <div className="max-w-7xl mx-auto mt-6 pt-6 border-t border-gray-900 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-gray-500">
           <p>CT Conveniência © {new Date().getFullYear()} • Todos os direitos reservados.</p>
-          <p>CNPJ: 00.000.000/0001-00 • Av. Paraná, 1250 - Centro</p>
+          <p>Avenida Rio Grande do Norte, 4365 • Umuarama - PR • CEP 87504-000</p>
         </div>
       </footer>
 
