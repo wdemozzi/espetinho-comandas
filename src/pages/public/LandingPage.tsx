@@ -94,8 +94,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const openProductModal = (product: Product) => {
     setActiveModalProduct(product);
     setModalQuantity(1);
-    setModalSelectedAddons([]);
+
+    const isJantinha =
+      product.category_id === 'b5' ||
+      product.name.toLowerCase().includes('jantinha');
+
+    if (isJantinha && product.addons && product.addons.length > 0) {
+      const defaultEspeto =
+        product.addons.find(
+          (a) =>
+            (a.name.toLowerCase().includes('espeto') || a.name.startsWith('Espeto:')) &&
+            a.price_cents === 0
+        ) ||
+        product.addons.find(
+          (a) => a.name.toLowerCase().includes('espeto') || a.name.startsWith('Espeto:')
+        ) ||
+        product.addons[0];
+
+      setModalSelectedAddons(
+        defaultEspeto ? [{ name: defaultEspeto.name, price_cents: defaultEspeto.price_cents }] : []
+      );
+    } else {
+      setModalSelectedAddons([]);
+    }
     setModalNotes('');
+  };
+
+  const handleSelectEspetoAddon = (addon: { name: string; price_cents: number }) => {
+    setModalSelectedAddons((prev) => {
+      const withoutOtherEspetos = prev.filter(
+        (a) => !a.name.toLowerCase().includes('espeto') && !a.name.startsWith('Espeto:')
+      );
+      return [...withoutOtherEspetos, addon];
+    });
   };
 
   const handleToggleAddon = (addon: { name: string; price_cents: number }) => {
@@ -989,48 +1020,180 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {/* Addons selection */}
-              {activeModalProduct.addons && activeModalProduct.addons.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-gray-800">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-gray-200 block">
-                      {activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
-                        ? '🍧 Escolha seus Complementos (preço por item):'
-                        : activeModalProduct.name.toLowerCase().includes('jantinha')
-                        ? '🍽️ Escolha o Espeto & Acompanhamentos:'
-                        : '✨ Opções & Personalização:'}
-                    </label>
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {modalSelectedAddons.length} selecionado(s)
-                    </span>
-                  </div>
-                  <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                    {activeModalProduct.addons.map((addon) => {
-                      const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
-                      return (
-                        <div
-                          key={addon.id}
-                          onClick={() => handleToggleAddon(addon)}
-                          className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
-                            isSelected
-                              ? 'bg-purple-950/70 border-purple-500 text-white shadow font-semibold'
-                              : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-gray-600 bg-charcoal-900'}`}>
-                              {isSelected ? '✓' : ''}
-                            </div>
-                            <span>{addon.name}</span>
+              {activeModalProduct.addons && activeModalProduct.addons.length > 0 && (() => {
+                const isJantinha =
+                  activeModalProduct.category_id === 'b5' ||
+                  activeModalProduct.name.toLowerCase().includes('jantinha');
+
+                const espetoOptions = activeModalProduct.addons.filter(
+                  (a) => a.name.toLowerCase().includes('espeto') || a.name.startsWith('Espeto:')
+                );
+                const extraOptions = activeModalProduct.addons.filter(
+                  (a) => !a.name.toLowerCase().includes('espeto') && !a.name.startsWith('Espeto:')
+                );
+
+                if (isJantinha && espetoOptions.length > 0) {
+                  return (
+                    <div className="space-y-3 pt-2 border-t border-gray-800">
+                      {/* Bloco 1: Escolha do Espetinho Acompanhante (Obrigatório - 1 Opção) */}
+                      <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                              <span className="text-sm">🍢</span>
+                              <span>Escolha o Espetinho que Acompanha o Prato:</span>
+                            </label>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              Selecione 1 espeto na brasa incluso na sua jantinha:
+                            </p>
                           </div>
-                          <span className={`font-mono text-xs font-bold ${isSelected ? 'text-amber-300' : addon.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'}`}>
-                            {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Incluso'}
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">
+                            1 Obrigatório
                           </span>
                         </div>
-                      );
-                    })}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
+                          {espetoOptions.map((addon) => {
+                            const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                            return (
+                              <div
+                                key={addon.id}
+                                onClick={() => handleSelectEspetoAddon(addon)}
+                                className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                                  isSelected
+                                    ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-600/30 font-bold'
+                                    : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <div
+                                    className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
+                                      isSelected
+                                        ? 'border-white bg-white text-amber-700 font-black'
+                                        : 'border-gray-600 bg-charcoal-900'
+                                    }`}
+                                  >
+                                    {isSelected ? '●' : ''}
+                                  </div>
+                                  <span className="truncate">{addon.name.replace(/^Espeto:\s*/i, '')}</span>
+                                </div>
+                                <span
+                                  className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
+                                    isSelected
+                                      ? 'text-white'
+                                      : addon.price_cents > 0
+                                      ? 'text-amber-400'
+                                      : 'text-emerald-400'
+                                  }`}
+                                >
+                                  {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Incluso'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Bloco 2: Acompanhamentos Extras (Opcionais) */}
+                      {extraOptions.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-gray-200 block">
+                              ➕ Deseja Acompanhamentos Extras? (Opcional)
+                            </label>
+                            <span className="text-[10px] text-gray-400 font-mono">
+                              {modalSelectedAddons.filter((a) => !a.name.toLowerCase().includes('espeto') && !a.name.startsWith('Espeto:')).length} selecionado(s)
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                            {extraOptions.map((addon) => {
+                              const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                              return (
+                                <div
+                                  key={addon.id}
+                                  onClick={() => handleToggleAddon(addon)}
+                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                                    isSelected
+                                      ? 'bg-purple-950/70 border-purple-500 text-white shadow font-semibold'
+                                      : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
+                                        isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-gray-600 bg-charcoal-900'
+                                      }`}
+                                    >
+                                      {isSelected ? '✓' : ''}
+                                    </div>
+                                    <span>{addon.name}</span>
+                                  </div>
+                                  <span
+                                    className={`font-mono text-xs font-bold ${
+                                      isSelected ? 'text-amber-300' : addon.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'
+                                    }`}
+                                  >
+                                    {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Grátis'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2 pt-2 border-t border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-gray-200 block">
+                        {activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
+                          ? '🍧 Escolha seus Complementos (preço por item):'
+                          : '✨ Opções & Personalização:'}
+                      </label>
+                      <span className="text-[10px] text-gray-400 font-mono">
+                        {modalSelectedAddons.length} selecionado(s)
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                      {activeModalProduct.addons.map((addon) => {
+                        const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                        return (
+                          <div
+                            key={addon.id}
+                            onClick={() => handleToggleAddon(addon)}
+                            className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                              isSelected
+                                ? 'bg-purple-950/70 border-purple-500 text-white shadow font-semibold'
+                                : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
+                                  isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-gray-600 bg-charcoal-900'
+                                }`}
+                              >
+                                {isSelected ? '✓' : ''}
+                              </div>
+                              <span>{addon.name}</span>
+                            </div>
+                            <span
+                              className={`font-mono text-xs font-bold ${
+                                isSelected ? 'text-amber-300' : addon.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'
+                              }`}
+                            >
+                              {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Incluso'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Special notes */}
               <div className="space-y-1.5 pt-2 border-t border-gray-800">
