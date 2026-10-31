@@ -413,21 +413,41 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
             )}
 
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <h3 className="text-lg font-extrabold text-white">{activeModalProduct.name}</h3>
-                <p className="text-xs text-gray-400 mt-1">{activeModalProduct.description}</p>
-                <p className="font-mono font-black text-ember-400 text-base mt-2">
-                  {formatBRL(activeModalProduct.price_cents)}
-                </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white">{activeModalProduct.name}</h3>
+                  <p className="text-xs text-gray-400 mt-1">{activeModalProduct.description}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="font-mono font-black text-ember-400 text-lg">
+                    {formatBRL(
+                      (activeModalProduct.price_cents + modalSelectedAddons.reduce((sum, a) => sum + a.price_cents, 0)) * modalQuantity
+                    )}
+                  </p>
+                  {modalSelectedAddons.length > 0 && (
+                    <span className="text-[10px] text-purple-300 font-semibold">
+                      +{modalSelectedAddons.length} complementos
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Addons Selection */}
               {activeModalProduct.addons && activeModalProduct.addons.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-gray-800">
-                  <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
-                    Ponto / Acompanhamentos Opcionais:
-                  </h4>
-                  <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-gray-200 uppercase tracking-wider">
+                      {activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
+                        ? '🍧 Escolha seus Complementos:'
+                        : activeModalProduct.name.toLowerCase().includes('jantinha')
+                        ? '🍽️ Espetos & Acompanhamentos:'
+                        : '✨ Complementos & Opcionais:'}
+                    </h4>
+                    <span className="text-[10px] text-gray-400 font-mono">
+                      {modalSelectedAddons.length} selecionado(s)
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
                     {activeModalProduct.addons.map((add) => {
                       const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
                       return (
@@ -436,16 +456,19 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                           onClick={() => handleToggleAddon({ name: add.name, price_cents: add.price_cents })}
                           className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between text-xs transition ${
                             isSelected
-                              ? 'bg-ember-950/60 border-ember-500 text-white'
+                              ? 'bg-ember-600 text-white border-ember-500 shadow-md font-bold'
                               : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
                           }`}
                         >
-                          <span>{add.name}</span>
-                          {add.price_cents > 0 && (
-                            <span className="font-mono text-ember-400 font-bold">
-                              +{formatBRL(add.price_cents)}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <div className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-white text-ember-600 border-white' : 'border-gray-600 bg-charcoal-900'}`}>
+                              {isSelected ? '✓' : ''}
+                            </div>
+                            <span>{add.name}</span>
+                          </div>
+                          <span className={`font-mono text-xs font-bold ${isSelected ? 'text-white' : add.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'}`}>
+                            {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
+                          </span>
                         </div>
                       );
                     })}
@@ -454,17 +477,48 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
               )}
 
               {/* Notes */}
-              <div className="pt-2 border-t border-gray-800">
-                <label className="text-xs font-bold text-gray-300 block mb-1">
-                  Alguma observação para a cozinha?
+              <div className="pt-2 border-t border-gray-800 space-y-1.5">
+                <label className="text-xs font-bold text-gray-300 block">
+                  Alguma observação para o pedido?
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: sem cebola, ponto mais para mal passada"
+                  placeholder={
+                    activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
+                      ? 'Ex: Leite condensado no fundo, caprichar no ninho...'
+                      : 'Ex: Ao ponto, sem vinagrete, pouco sal...'
+                  }
                   value={modalNotes}
                   onChange={(e) => setModalNotes(e.target.value)}
                   className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
                 />
+
+                {/* Atalhos de observações */}
+                <div className="flex flex-wrap gap-1">
+                  {(activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')) ? (
+                    ['Sem banana', 'Ninho no fundo', 'Caprichar na calda', 'Pouco doce'].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-ember-500 text-gray-300 hover:text-white transition"
+                      >
+                        +{sug}
+                      </button>
+                    ))
+                  ) : (
+                    ['Ao ponto', 'Bem passado', 'Pouco sal', 'Sem vinagrete', 'Sem farofa'].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-ember-500 text-gray-300 hover:text-white transition"
+                      >
+                        +{sug}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* Quantity */}

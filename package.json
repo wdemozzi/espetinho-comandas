@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "keep-alive": "node scripts/keep-alive.js"
+    "keep-alive": "node scripts/keep-alive.js",
+    "sync-cloud": "node scripts/sync-cloud.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

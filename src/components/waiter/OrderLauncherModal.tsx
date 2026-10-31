@@ -71,12 +71,16 @@ export const OrderLauncherModal: React.FC<OrderLauncherModalProps> = ({
       .reduce((sum, i) => sum + i.quantity, 0);
   };
 
+  const handleOpenCustomize = (product: Product) => {
+    setAddonProduct(product);
+    setTempAddons([]);
+    setTempNotes('');
+  };
+
   const handleAddProductSimple = (product: Product) => {
     // If product has addons, open customization popup
     if (product.addons && product.addons.length > 0) {
-      setAddonProduct(product);
-      setTempAddons([]);
-      setTempNotes('');
+      handleOpenCustomize(product);
       return;
     }
 
@@ -305,21 +309,31 @@ export const OrderLauncherModal: React.FC<OrderLauncherModalProps> = ({
                         {hasAddons ? (
                           <button
                             type="button"
-                            onClick={() => handleAddProductSimple(prod)}
-                            className="py-1.5 px-3 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-bold text-xs flex items-center gap-1 shadow transition"
+                            onClick={() => handleOpenCustomize(prod)}
+                            className="py-1.5 px-3 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-ember-600/20 transition"
                           >
                             <SlidersHorizontal className="w-3.5 h-3.5" />
-                            <span>{qtyInDraft > 0 ? `${qtyInDraft}x • Opções` : '+ Adicionar'}</span>
+                            <span>{qtyInDraft > 0 ? `${qtyInDraft}x • Opções` : '+ Opções'}</span>
                           </button>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleAddProductSimple(prod)}
-                            className="py-1.5 px-3.5 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition"
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span>{qtyInDraft > 0 ? `${qtyInDraft}x Adicionar` : 'Adicionar'}</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              title="Adicionar Observação / Personalizar"
+                              onClick={() => handleOpenCustomize(prod)}
+                              className="p-1.5 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 transition"
+                            >
+                              <SlidersHorizontal className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAddProductSimple(prod)}
+                              className="py-1.5 px-3 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-bold text-xs flex items-center gap-1 shadow transition"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{qtyInDraft > 0 ? `${qtyInDraft}x` : 'Adicionar'}</span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -502,76 +516,121 @@ export const OrderLauncherModal: React.FC<OrderLauncherModalProps> = ({
       {/* Addon / Customization Modal for Product */}
       {addonProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-charcoal-900 border border-gray-700 rounded-2xl p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
+          <div className="w-full max-w-md bg-charcoal-900 border border-gray-700 rounded-2xl p-5 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-800">
               <div>
                 <h3 className="font-extrabold text-base text-white">{addonProduct.name}</h3>
-                <p className="text-xs text-ember-400 font-mono font-bold mt-0.5">
-                  {formatBRL(addonProduct.price_cents)}
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-gray-400">Total:</span>
+                  <span className="text-sm text-ember-400 font-mono font-extrabold">
+                    {formatBRL(addonProduct.price_cents + tempAddons.reduce((sum, a) => sum + a.price_cents, 0))}
+                  </span>
+                  {tempAddons.length > 0 && (
+                    <span className="text-[10px] text-purple-300 font-semibold bg-purple-950/60 border border-purple-800/60 px-2 py-0.5 rounded-full">
+                      +{tempAddons.length} complementos
+                    </span>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => setAddonProduct(null)}
-                className="p-1.5 text-gray-400 hover:text-white"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Addons list */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
-                Escolha o Ponto / Opcionais:
-              </label>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {addonProduct.addons?.map((add) => {
-                  const isChecked = tempAddons.some((a) => a.name === add.name);
-                  return (
-                    <button
-                      key={add.id}
-                      type="button"
-                      onClick={() => {
-                        setTempAddons((prev) =>
-                          isChecked ? prev.filter((a) => a.name !== add.name) : [...prev, add]
-                        );
-                      }}
-                      className={`w-full p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition ${
-                        isChecked
-                          ? 'bg-ember-600 text-white border-ember-500 shadow'
-                          : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
-                      }`}
-                    >
-                      <span>{add.name}</span>
-                      {add.price_cents > 0 && (
-                        <span className="font-mono opacity-90">+{formatBRL(add.price_cents)}</span>
-                      )}
-                    </button>
-                  );
-                })}
+            {addonProduct.addons && addonProduct.addons.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
+                    Complementos &amp; Opcionais:
+                  </label>
+                  <span className="text-[11px] text-gray-500">Toque para selecionar</span>
+                </div>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  {addonProduct.addons.map((add) => {
+                    const isChecked = tempAddons.some((a) => a.name === add.name);
+                    return (
+                      <button
+                        key={add.id}
+                        type="button"
+                        onClick={() => {
+                          setTempAddons((prev) =>
+                            isChecked ? prev.filter((a) => a.name !== add.name) : [...prev, add]
+                          );
+                        }}
+                        className={`w-full p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition ${
+                          isChecked
+                            ? 'bg-ember-600 text-white border-ember-500 shadow-md shadow-ember-600/30 font-bold'
+                            : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${isChecked ? 'bg-white text-ember-700 border-white' : 'border-gray-600 bg-charcoal-900'}`}>
+                            {isChecked ? '✓' : ''}
+                          </div>
+                          <span>{add.name}</span>
+                        </div>
+                        <span className={`font-mono text-xs font-bold ${isChecked ? 'text-white' : add.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'}`}>
+                          {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Notes */}
-            <div>
-              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                Observação (opcional):
+            {/* Notes with Quick Suggestions */}
+            <div className="space-y-2 pt-2 border-t border-gray-800">
+              <label className="text-xs font-semibold text-gray-300 block">
+                Observação do Item (opcional):
               </label>
               <input
                 type="text"
-                placeholder="Ex: pouco sal, caprichar na farofa"
+                placeholder="Ex: sem cebola, pouco sal, caprichar no ninho..."
                 value={tempNotes}
                 onChange={(e) => setTempNotes(e.target.value)}
                 className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
               />
+
+              {/* Sugestões rápidas de observação */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {(addonProduct.name.toLowerCase().includes('açaí') || addonProduct.name.toLowerCase().includes('acai')) ? (
+                  ['Sem banana', 'Ninho no fundo', 'Caprichar na calda', 'Sem morango', 'Pouco doce'].map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => setTempNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                      className="text-[10px] px-2 py-1 rounded bg-charcoal-800 border border-gray-700 hover:border-ember-500 text-gray-300 hover:text-white transition"
+                    >
+                      +{sug}
+                    </button>
+                  ))
+                ) : (
+                  ['Ao ponto', 'Bem passado', 'Pouco sal', 'Sem vinagrete', 'Sem farofa', 'Mais mandioca'].map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => setTempNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                      className="text-[10px] px-2 py-1 rounded bg-charcoal-800 border border-gray-700 hover:border-ember-500 text-gray-300 hover:text-white transition"
+                    >
+                      +{sug}
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
 
             <button
               type="button"
               onClick={handleConfirmCustomAddon}
-              className="w-full py-3 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-extrabold text-sm shadow-lg shadow-ember-600/30 transition flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-ember-600 via-ember-500 to-amber-500 hover:from-ember-500 text-white font-extrabold text-sm shadow-lg shadow-ember-600/30 transition flex items-center justify-center gap-2 mt-2"
             >
               <Plus className="w-4 h-4" />
-              <span>Adicionar ao Pedido</span>
+              <span>Adicionar ao Pedido • {formatBRL(addonProduct.price_cents + tempAddons.reduce((sum, a) => sum + a.price_cents, 0))}</span>
             </button>
           </div>
         </div>

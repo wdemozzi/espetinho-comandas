@@ -55,9 +55,11 @@ const INITIAL_PROFILES: Profile[] = [
 
 const INITIAL_CATEGORIES: Category[] = [
   { id: 'b1', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Espetinhos na Brasa', slug: 'espetinhos', icon: 'Flame', sort_order: 1, default_sector: 'churrasqueira', is_active: true, created_at: new Date().toISOString() },
-  { id: 'b2', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Acompanhamentos', slug: 'acompanhamentos', icon: 'Utensils', sort_order: 2, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
-  { id: 'b3', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Porções & Petiscos', slug: 'porcoes', icon: 'Soup', sort_order: 3, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
-  { id: 'b4', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Bebidas & Chopp', slug: 'bebidas', icon: 'Beer', sort_order: 4, default_sector: 'bar', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b5', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Jantinhas Completas', slug: 'jantinhas', icon: 'Utensils', sort_order: 2, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b6', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Açaí & Sobremesas', slug: 'acai-sobremesas', icon: 'Sparkles', sort_order: 3, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b2', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Acompanhamentos', slug: 'acompanhamentos', icon: 'Utensils', sort_order: 4, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b3', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Porções & Petiscos', slug: 'porcoes', icon: 'Soup', sort_order: 5, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b4', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Bebidas & Chopp', slug: 'bebidas', icon: 'Beer', sort_order: 6, default_sector: 'bar', is_active: true, created_at: new Date().toISOString() },
 ];
 
 const INITIAL_PRODUCTS: Product[] = [
@@ -245,6 +247,151 @@ const INITIAL_PRODUCTS: Product[] = [
     min_stock_alert: 5,
     created_at: new Date().toISOString(),
   },
+  {
+    id: 'p11',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b5',
+    name: 'Jantinha Tradicional Completa',
+    description: 'Arroz branco soltinho, feijão tropeiro temperado da casa, mandioca cozida amanteigada derretendo, vinagrete fresco e 1 espetinho na brasa à sua escolha.',
+    image_url: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80',
+    price_cents: 2500,
+    cost_price_cents: 1100,
+    sector: 'cozinha',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 40,
+    track_stock: true,
+    min_stock_alert: 10,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'aj1', product_id: 'p11', name: 'Espeto: Picanha Nobre (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 1 },
+      { id: 'aj2', product_id: 'p11', name: 'Espeto: Alcatra Macia', price_cents: 0, is_available: true, sort_order: 2 },
+      { id: 'aj3', product_id: 'p11', name: 'Espeto: Frango com Bacon', price_cents: 0, is_available: true, sort_order: 3 },
+      { id: 'aj4', product_id: 'p11', name: 'Espeto: Linguiça na Brasa', price_cents: 0, is_available: true, sort_order: 4 },
+      { id: 'aj5', product_id: 'p11', name: 'Espeto: Kafta Artesanal', price_cents: 0, is_available: true, sort_order: 5 },
+      { id: 'aj6', product_id: 'p11', name: 'Espeto: Queijo Coalho', price_cents: 0, is_available: true, sort_order: 6 },
+      { id: 'aj7', product_id: 'p11', name: 'Espeto Adicional (+R$ 10,00)', price_cents: 1000, is_available: true, sort_order: 7 },
+      { id: 'aj8', product_id: 'p11', name: 'Mandioca Extra (+R$ 5,00)', price_cents: 500, is_available: true, sort_order: 8 },
+      { id: 'aj9', product_id: 'p11', name: 'Vinagrete Extra (+R$ 4,00)', price_cents: 400, is_available: true, sort_order: 9 },
+      { id: 'aj10', product_id: 'p11', name: 'Feijão Tropeiro Extra (+R$ 6,00)', price_cents: 600, is_available: true, sort_order: 10 },
+    ],
+  },
+  {
+    id: 'p12',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b5',
+    name: 'Jantinha Dupla Especial (2 Espetos)',
+    description: 'Servida para quem tem fome de verdade: arroz branco soltinho, feijão tropeiro artesanal, mandioca na manteiga, vinagrete especial e 2 espetinhos à sua escolha.',
+    image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
+    price_cents: 3400,
+    cost_price_cents: 1600,
+    sector: 'cozinha',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 35,
+    track_stock: true,
+    min_stock_alert: 8,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'ajd1', product_id: 'p12', name: '1º Espeto: Picanha (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 1 },
+      { id: 'ajd2', product_id: 'p12', name: '1º Espeto: Alcatra Macia', price_cents: 0, is_available: true, sort_order: 2 },
+      { id: 'ajd3', product_id: 'p12', name: '1º Espeto: Frango com Bacon', price_cents: 0, is_available: true, sort_order: 3 },
+      { id: 'ajd4', product_id: 'p12', name: '2º Espeto: Queijo Coalho', price_cents: 0, is_available: true, sort_order: 4 },
+      { id: 'ajd5', product_id: 'p12', name: '2º Espeto: Linguiça na Brasa', price_cents: 0, is_available: true, sort_order: 5 },
+      { id: 'ajd6', product_id: 'p12', name: '2º Espeto: Kafta Artesanal', price_cents: 0, is_available: true, sort_order: 6 },
+      { id: 'ajd7', product_id: 'p12', name: 'Mandioca Extra (+R$ 5,00)', price_cents: 500, is_available: true, sort_order: 7 },
+    ],
+  },
+  {
+    id: 'p13',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b6',
+    name: 'Açaí no Copo 300ml',
+    description: 'Açaí cremoso especial batido no ponto ideal. Escolha seus complementos favoritos com preço individual de cada um!',
+    image_url: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80',
+    price_cents: 1400,
+    cost_price_cents: 550,
+    sector: 'cozinha',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 50,
+    track_stock: true,
+    min_stock_alert: 10,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'ac1', product_id: 'p13', name: 'Leite Condensado (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 1 },
+      { id: 'ac2', product_id: 'p13', name: 'Leite Ninho em Pó (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 2 },
+      { id: 'ac3', product_id: 'p13', name: 'Morango Fresco Picado (+R$ 4,00)', price_cents: 400, is_available: true, sort_order: 3 },
+      { id: 'ac4', product_id: 'p13', name: 'Banana Fatiada (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 4 },
+      { id: 'ac5', product_id: 'p13', name: 'Granola Crocante (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 5 },
+      { id: 'ac6', product_id: 'p13', name: 'Paçoca de Amendoim (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 6 },
+      { id: 'ac7', product_id: 'p13', name: 'Nutella Pura (+R$ 5,00)', price_cents: 500, is_available: true, sort_order: 7 },
+      { id: 'ac8', product_id: 'p13', name: 'Confetes de Chocolate (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 8 },
+      { id: 'ac9', product_id: 'p13', name: 'Mel Puro (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 9 },
+      { id: 'ac10', product_id: 'p13', name: 'Calda de Morango (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 10 },
+      { id: 'ac11', product_id: 'p13', name: 'Calda de Chocolate (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 11 },
+    ],
+  },
+  {
+    id: 'p14',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b6',
+    name: 'Açaí no Copo 500ml',
+    description: 'Copo generoso de 500ml de puro açaí super cremoso e refrescante. Monte do seu jeito com complementos selecionados!',
+    image_url: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80',
+    price_cents: 2000,
+    cost_price_cents: 800,
+    sector: 'cozinha',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 45,
+    track_stock: true,
+    min_stock_alert: 10,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'acb1', product_id: 'p14', name: 'Leite Condensado (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 1 },
+      { id: 'acb2', product_id: 'p14', name: 'Leite Ninho em Pó (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 2 },
+      { id: 'acb3', product_id: 'p14', name: 'Morango Fresco Picado (+R$ 4,00)', price_cents: 400, is_available: true, sort_order: 3 },
+      { id: 'acb4', product_id: 'p14', name: 'Banana Fatiada (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 4 },
+      { id: 'acb5', product_id: 'p14', name: 'Granola Crocante (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 5 },
+      { id: 'acb6', product_id: 'p14', name: 'Paçoca de Amendoim (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 6 },
+      { id: 'acb7', product_id: 'p14', name: 'Nutella Pura (+R$ 5,00)', price_cents: 500, is_available: true, sort_order: 7 },
+      { id: 'acb8', product_id: 'p14', name: 'Confetes de Chocolate (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 8 },
+      { id: 'acb9', product_id: 'p14', name: 'Mel Puro (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 9 },
+      { id: 'acb10', product_id: 'p14', name: 'Calda de Morango (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 10 },
+      { id: 'acb11', product_id: 'p14', name: 'Calda de Chocolate (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 11 },
+    ],
+  },
+  {
+    id: 'p15',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b6',
+    name: 'Açaí Mega na Tigela / Copo 700ml',
+    description: 'O gigante de 700ml para dividir ou se fartar! Açaí espesso de alta qualidade com complementos e caldas que você escolher.',
+    image_url: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80',
+    price_cents: 2600,
+    cost_price_cents: 1100,
+    sector: 'cozinha',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 30,
+    track_stock: true,
+    min_stock_alert: 8,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'acc1', product_id: 'p15', name: 'Leite Condensado (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 1 },
+      { id: 'acc2', product_id: 'p15', name: 'Leite Ninho em Pó (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 2 },
+      { id: 'acc3', product_id: 'p15', name: 'Morango Fresco Picado (+R$ 4,00)', price_cents: 400, is_available: true, sort_order: 3 },
+      { id: 'acc4', product_id: 'p15', name: 'Banana Fatiada (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 4 },
+      { id: 'acc5', product_id: 'p15', name: 'Granola Crocante (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 5 },
+      { id: 'acc6', product_id: 'p15', name: 'Paçoca de Amendoim (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 6 },
+      { id: 'acc7', product_id: 'p15', name: 'Nutella Pura (+R$ 5,00)', price_cents: 500, is_available: true, sort_order: 7 },
+      { id: 'acc8', product_id: 'p15', name: 'Confetes de Chocolate (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 8 },
+      { id: 'acc9', product_id: 'p15', name: 'Mel Puro (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 9 },
+      { id: 'acc10', product_id: 'p15', name: 'Calda de Morango (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 10 },
+      { id: 'acc11', product_id: 'p15', name: 'Calda de Chocolate (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 11 },
+    ],
+  },
 ];
 
 const INITIAL_TABLES: RestaurantTable[] = [
@@ -325,12 +472,24 @@ class DatabaseStore {
       if (storedProducts) {
         const parsed = JSON.parse(storedProducts);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          this.products = parsed.map((p) => ({
+          const existingIds = new Set(parsed.map((p) => p.id));
+          const missingSeed = INITIAL_PRODUCTS.filter((ip) => !existingIds.has(ip.id));
+          this.products = [...parsed, ...missingSeed].map((p) => ({
             ...p,
             stock_quantity: typeof p.stock_quantity === 'number' ? p.stock_quantity : 40,
             track_stock: p.track_stock !== undefined ? p.track_stock : true,
             min_stock_alert: typeof p.min_stock_alert === 'number' ? p.min_stock_alert : 10,
           }));
+        }
+      }
+
+      const storedCategories = localStorage.getItem('ct_categories');
+      if (storedCategories) {
+        const parsed = JSON.parse(storedCategories);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((c: Category) => c.id));
+          const missingSeed = INITIAL_CATEGORIES.filter((ic) => !existingIds.has(ic.id));
+          this.categories = [...parsed, ...missingSeed];
         }
       }
 
@@ -381,6 +540,7 @@ class DatabaseStore {
       localStorage.setItem('ct_tabs', JSON.stringify(this.tabs));
       localStorage.setItem('ct_orders', JSON.stringify(this.orders));
       localStorage.setItem('ct_products', JSON.stringify(this.products));
+      localStorage.setItem('ct_categories', JSON.stringify(this.categories));
       localStorage.setItem('ct_establishment', JSON.stringify(this.establishment));
       localStorage.setItem('ct_next_order_num', String(this.nextOrderNumber));
       localStorage.setItem('ct_payments', JSON.stringify(this.payments));
@@ -629,6 +789,38 @@ class DatabaseStore {
     return [...this.categories].sort((a, b) => a.sort_order - b.sort_order);
   }
 
+  public saveCategory(categoryData: Partial<Category>) {
+    if (categoryData.id) {
+      const idx = this.categories.findIndex((c) => c.id === categoryData.id);
+      if (idx !== -1) {
+        this.categories[idx] = { ...this.categories[idx], ...categoryData };
+      }
+    } else {
+      const newCat: Category = {
+        id: `b${Date.now()}`,
+        establishment_id: this.establishment.id,
+        name: categoryData.name || 'Nova Categoria',
+        slug: categoryData.name ? categoryData.name.toLowerCase().replace(/[^a-z0-9]/g, '-') : `cat-${Date.now()}`,
+        icon: categoryData.icon || 'Utensils',
+        sort_order: this.categories.length + 1,
+        default_sector: categoryData.default_sector || 'cozinha',
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+      this.categories.push(newCat);
+    }
+    this.persist();
+    this.notify();
+    supabaseSync.saveToCloud('categories', this.categories);
+  }
+
+  public deleteCategory(categoryId: string) {
+    this.categories = this.categories.filter((c) => c.id !== categoryId);
+    this.persist();
+    this.notify();
+    supabaseSync.saveToCloud('categories', this.categories);
+  }
+
   public getProducts(): Product[] {
     return [...this.products];
   }
@@ -761,6 +953,13 @@ class DatabaseStore {
       };
       this.products.unshift(newProduct);
     }
+    this.persist();
+    this.notify();
+    supabaseSync.saveToCloud('products', this.products);
+  }
+
+  public deleteProduct(productId: string) {
+    this.products = this.products.filter((p) => p.id !== productId);
     this.persist();
     this.notify();
     supabaseSync.saveToCloud('products', this.products);

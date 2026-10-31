@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../../lib/databaseStore';
-import { Product, RestaurantTable, ProductionSector, Profile, CustomerLead, Order, Tab } from '../../types/database.types';
+import { Product, RestaurantTable, ProductionSector, Profile, CustomerLead, Order, Tab, Category } from '../../types/database.types';
 import { formatBRL, parseBRLToCents } from '../../lib/currency';
 import { SectorBadge, TableStatusBadge } from '../../components/common/Badge';
 import { QrCodeModal } from '../../components/common/QrCodeModal';
@@ -55,6 +55,7 @@ import {
   Send,
   ShoppingBag,
   Percent,
+  Trash2,
 } from 'lucide-react';
 
 type PeriodFilter = 'today' | 'yesterday' | 'month' | 'year' | 'all' | 'custom';
@@ -63,7 +64,7 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'stock' | 'clients' | 'products' | 'tables' | 'users' | 'cloud'>('overview');
   const [products, setProducts] = useState<Product[]>(db.getProducts());
   const [tables, setTables] = useState<RestaurantTable[]>(db.getTables());
-  const categories = db.getCategories();
+  const [categories, setCategories] = useState<Category[]>(db.getCategories());
   const [profiles, setProfiles] = useState<Profile[]>(db.getProfiles());
   const [tabsState, setTabsState] = useState<Tab[]>(db.getTabs());
   const [ordersState, setOrdersState] = useState<Order[]>(db.getOrders());
@@ -74,6 +75,13 @@ export const AdminDashboard: React.FC = () => {
   const establishment = db.getEstablishment();
   const [serviceFeeEnabled, setServiceFeeEnabled] = useState<boolean>(establishment.service_fee_enabled === true);
   const [serviceFeePercent, setServiceFeePercent] = useState<number>(establishment.service_fee_percent || 10);
+
+  // Category & Product Filter states
+  const [adminCategoryFilter, setAdminCategoryFilter] = useState<string>('all');
+  const [productSearchTerm, setProductSearchTerm] = useState<string>('');
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
+  const [newCategoryName, setNewCategoryName] = useState<string>('');
+  const [newCategorySector, setNewCategorySector] = useState<ProductionSector>('cozinha');
 
   // Period filter for Sales Report
   const [filterPeriod, setFilterPeriod] = useState<PeriodFilter>('today');
@@ -97,6 +105,8 @@ export const AdminDashboard: React.FC = () => {
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [priceInput, setPriceInput] = useState<string>('');
+  const [newAddonName, setNewAddonName] = useState<string>('');
+  const [newAddonPrice, setNewAddonPrice] = useState<string>('');
 
   const [isTableModalOpen, setIsTableModalOpen] = useState<boolean>(false);
   const [newTableLabel, setNewTableLabel] = useState<string>('');
@@ -112,6 +122,7 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     return db.subscribe(() => {
       setProducts(db.getProducts());
+      setCategories(db.getCategories());
       setTables(db.getTables());
       setProfiles(db.getProfiles());
       setTabsState(db.getTabs());
@@ -267,25 +278,94 @@ export const AdminDashboard: React.FC = () => {
     db.toggleProductAvailability(id);
   };
 
+  const handleDeleteProduct = (productId: string, productName: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir o produto "${productName}"? Ele será removido permanentemente do cardápio e não poderá ser recuperado.`)) {
+      db.deleteProduct(productId);
+      if (editingProduct?.id === productId) {
+        setIsProductModalOpen(false);
+        setEditingProduct(null);
+      }
+      setToastMessage(`Produto "${productName}" excluído com sucesso!`);
+      setTimeout(() => setToastMessage(null), 3500);
+    }
+  };
+
   const handleOpenEditProduct = (prod?: Product) => {
+    setNewAddonName('');
+    setNewAddonPrice('');
     if (prod) {
-      setEditingProduct(prod);
+      setEditingProduct({ ...prod, addons: prod.addons ? [...prod.addons] : [] });
       setPriceInput((prod.price_cents / 100).toFixed(2));
     } else {
+      const defaultCat = adminCategoryFilter !== 'all'
+        ? categories.find((c) => c.id === adminCategoryFilter) || categories[0]
+        : categories[0];
       setEditingProduct({
         name: '',
         description: '',
-        category_id: categories[0]?.id || '',
-        sector: 'churrasqueira',
+        category_id: defaultCat?.id || '',
+        sector: defaultCat?.default_sector || 'churrasqueira',
         is_available: true,
         allow_notes: true,
         stock_quantity: 40,
         track_stock: true,
         min_stock_alert: 10,
+        addons: [],
       });
       setPriceInput('');
     }
     setIsProductModalOpen(true);
+  };
+
+  const handleChangeProductCategory = (productId: string, newCategoryId: string) => {
+    const prod = products.find((p) => p.id === productId);
+    const cat = categories.find((c) => c.id === newCategoryId);
+    if (!prod || !cat) return;
+    db.saveProduct({
+      id: productId,
+      category_id: newCategoryId,
+    });
+    setToastMessage(`Produto "${prod.name}" movido para "${cat.name}"!`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleSaveCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    db.saveCategory({
+      name: newCategoryName.trim(),
+      default_sector: newCategorySector,
+    });
+    setIsCategoryModalOpen(false);
+    setNewCategoryName('');
+    setToastMessage(`Categoria "${newCategoryName}" cadastrada com sucesso!`);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleAddAddonToProduct = () => {
+    if (!newAddonName.trim()) return;
+    const priceCents = parseBRLToCents(newAddonPrice || '0');
+    const newAddon = {
+      id: `add-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      product_id: editingProduct?.id || '',
+      name: newAddonName.trim(),
+      price_cents: priceCents,
+      is_available: true,
+      sort_order: (editingProduct?.addons?.length || 0) + 1,
+    };
+    setEditingProduct((prev) => prev ? {
+      ...prev,
+      addons: [...(prev.addons || []), newAddon],
+    } : null);
+    setNewAddonName('');
+    setNewAddonPrice('');
+  };
+
+  const handleRemoveAddonFromProduct = (addonId: string) => {
+    setEditingProduct((prev) => prev ? {
+      ...prev,
+      addons: (prev.addons || []).filter((a) => a.id !== addonId),
+    } : null);
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
@@ -298,10 +378,13 @@ export const AdminDashboard: React.FC = () => {
       stock_quantity: typeof editingProduct.stock_quantity === 'number' ? editingProduct.stock_quantity : 40,
       track_stock: editingProduct.track_stock ?? true,
       min_stock_alert: typeof editingProduct.min_stock_alert === 'number' ? editingProduct.min_stock_alert : 10,
+      addons: editingProduct.addons || [],
     });
 
     setIsProductModalOpen(false);
     setEditingProduct(null);
+    setToastMessage(`Produto "${editingProduct.name}" salvo com sucesso!`);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleSaveTable = (e: React.FormEvent) => {
@@ -1351,74 +1434,217 @@ END $$;`;
       {/* TAB 2: PRODUCTS & MENU */}
       {activeTab === 'products' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-gray-200">
-              Produtos Cadastrados ({products.length})
-            </h3>
-            <button
-              type="button"
-              onClick={() => handleOpenEditProduct()}
-              className="py-2 px-3.5 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-ember-600/20 transition"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Novo Produto</span>
-            </button>
+          {/* Header & Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-gray-200">
+                Cardápio &amp; Produtos ({products.length} cadastrados)
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Organize seus produtos por categorias, defina complementos precificados e gerencie a disponibilidade.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewCategoryName('');
+                  setNewCategorySector('cozinha');
+                  setIsCategoryModalOpen(true);
+                }}
+                className="py-2 px-3 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-300 font-bold text-xs flex items-center gap-1.5 border border-gray-700 transition"
+              >
+                <Layers className="w-3.5 h-3.5 text-amber-400" />
+                <span>+ Nova Categoria</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenEditProduct()}
+                className="py-2 px-3.5 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-ember-600/20 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Novo Produto</span>
+              </button>
+            </div>
           </div>
 
+          {/* Categorias em Estilo Pills (Igual ao Cardápio) */}
+          <div className="p-3 rounded-2xl bg-charcoal-850 border border-gray-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Filtrar por Categoria do Cardápio:
+              </span>
+              <span className="text-[11px] text-gray-400 font-mono">
+                {adminCategoryFilter === 'all'
+                  ? 'Todas as categorias'
+                  : categories.find((c) => c.id === adminCategoryFilter)?.name}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              <button
+                type="button"
+                onClick={() => setAdminCategoryFilter('all')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
+                  adminCategoryFilter === 'all'
+                    ? 'bg-ember-600 text-white shadow-md shadow-ember-600/30'
+                    : 'bg-charcoal-800 text-gray-400 hover:text-white border border-gray-700/80'
+                }`}
+              >
+                <span>Todas</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 font-mono">
+                  {products.length}
+                </span>
+              </button>
+
+              {categories.map((cat) => {
+                const count = products.filter((p) => p.category_id === cat.id).length;
+                const isSelected = adminCategoryFilter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setAdminCategoryFilter(cat.id)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-ember-600 text-white shadow-md shadow-ember-600/30'
+                        : 'bg-charcoal-800 text-gray-400 hover:text-white border border-gray-700/80'
+                    }`}
+                  >
+                    <span>{cat.name}</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 font-mono">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Barra de Pesquisa Rápida por Produto */}
+            <div className="relative pt-1 border-t border-gray-800">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar produto por nome, ingrediente ou descrição..."
+                value={productSearchTerm}
+                onChange={(e) => setProductSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-charcoal-800 border border-gray-700 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-ember-500"
+              />
+            </div>
+          </div>
+
+          {/* Tabela de Produtos Filtrada */}
           <div className="bg-charcoal-850 rounded-2xl border border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-gray-300">
                 <thead className="bg-charcoal-900 border-b border-gray-800 text-[11px] uppercase font-bold text-gray-400">
                   <tr>
                     <th className="p-3.5">Produto</th>
-                    <th className="p-3.5">Categoria</th>
+                    <th className="p-3.5">Categoria Definida</th>
                     <th className="p-3.5">Setor de Produção</th>
-                    <th className="p-3.5">Preço (R$)</th>
+                    <th className="p-3.5">Preço Base</th>
                     <th className="p-3.5 text-center">Disponível?</th>
                     <th className="p-3.5 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
-                  {products.map((p) => {
-                    const cat = categories.find((c) => c.id === p.category_id);
-                    return (
-                      <tr key={p.id} className="hover:bg-charcoal-800/40 transition">
-                        <td className="p-3.5">
-                          <p className="font-bold text-white text-sm">{p.name}</p>
-                          <p className="text-gray-500 text-[11px] line-clamp-1">{p.description}</p>
-                        </td>
-                        <td className="p-3.5">{cat?.name || 'Geral'}</td>
-                        <td className="p-3.5">
-                          <SectorBadge sector={p.sector} />
-                        </td>
-                        <td className="p-3.5 font-mono font-bold text-ember-400 text-sm">
-                          {formatBRL(p.price_cents)}
-                        </td>
-                        <td className="p-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleProduct(p.id)}
-                            className="inline-flex items-center gap-1 text-xs"
-                          >
-                            {p.is_available ? (
-                              <ToggleRight className="w-6 h-6 text-emerald-400" />
-                            ) : (
-                              <ToggleLeft className="w-6 h-6 text-gray-500" />
+                  {products
+                    .filter((p) => {
+                      const matchCategory = adminCategoryFilter === 'all' || p.category_id === adminCategoryFilter;
+                      const matchSearch =
+                        !productSearchTerm ||
+                        p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                        (p.description && p.description.toLowerCase().includes(productSearchTerm.toLowerCase()));
+                      return matchCategory && matchSearch;
+                    })
+                    .map((p) => {
+                      const cat = categories.find((c) => c.id === p.category_id);
+                      return (
+                        <tr key={p.id} className="hover:bg-charcoal-800/40 transition">
+                          <td className="p-3.5">
+                            <p className="font-bold text-white text-sm">{p.name}</p>
+                            <p className="text-gray-500 text-[11px] line-clamp-1">{p.description}</p>
+                            {p.addons && p.addons.length > 0 && (
+                              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] bg-purple-950/60 border border-purple-800/50 text-purple-300 font-semibold">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                {p.addons.length} complementos ({p.addons.map((a) => a.name).slice(0, 3).join(', ')}{p.addons.length > 3 ? '...' : ''})
+                              </span>
                             )}
-                          </button>
-                        </td>
-                        <td className="p-3.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditProduct(p)}
-                            className="p-1.5 rounded-lg bg-charcoal-800 hover:bg-gray-700 text-gray-300 hover:text-white"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="p-3.5">
+                            {/* Seletor rápido de categoria com atualização instantânea */}
+                            <select
+                              value={p.category_id}
+                              onChange={(e) => handleChangeProductCategory(p.id, e.target.value)}
+                              className="px-2.5 py-1.5 rounded-lg bg-charcoal-800 border border-gray-700 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500 cursor-pointer"
+                              title="Clique para redefinir a categoria deste produto"
+                            >
+                              {categories.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-3.5">
+                            <SectorBadge sector={p.sector} />
+                          </td>
+                          <td className="p-3.5 font-mono font-bold text-ember-400 text-sm">
+                            {formatBRL(p.price_cents)}
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleProduct(p.id)}
+                              className="inline-flex items-center gap-1 text-xs"
+                              title="Alternar disponibilidade no cardápio"
+                            >
+                              {p.is_available ? (
+                                <ToggleRight className="w-6 h-6 text-emerald-400" />
+                              ) : (
+                                <ToggleLeft className="w-6 h-6 text-gray-500" />
+                              )}
+                            </button>
+                          </td>
+                          <td className="p-3.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                title="Editar Produto e Complementos"
+                                onClick={() => handleOpenEditProduct(p)}
+                                className="p-1.5 rounded-lg bg-charcoal-800 hover:bg-gray-700 text-gray-300 hover:text-white transition"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Excluir Produto"
+                                onClick={() => handleDeleteProduct(p.id, p.name)}
+                                className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/80 border border-red-800/50 text-red-400 hover:text-red-200 transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                  {products.filter((p) => {
+                    const matchCategory = adminCategoryFilter === 'all' || p.category_id === adminCategoryFilter;
+                    const matchSearch =
+                      !productSearchTerm ||
+                      p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                      (p.description && p.description.toLowerCase().includes(productSearchTerm.toLowerCase()));
+                    return matchCategory && matchSearch;
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-gray-500">
+                        Nenhum produto encontrado nesta categoria ou busca.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1755,35 +1981,74 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ct_cloud_sync;`}</pre>
       {/* Product Edit/Create Modal */}
       {isProductModalOpen && editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-charcoal-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">
-                {editingProduct.id ? 'Editar Produto' : 'Novo Produto'}
-              </h3>
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-charcoal-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between sticky -top-6 -mt-2 -mx-2 px-2 py-3 bg-charcoal-900/95 backdrop-blur border-b border-gray-800 z-10">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-ember-600/20 border border-ember-500/40 flex items-center justify-center text-ember-400">
+                  <Package className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-extrabold text-white">
+                  {editingProduct.id ? 'Editar Produto' : 'Cadastrar Novo Produto'}
+                </h3>
+              </div>
               <button
                 onClick={() => setIsProductModalOpen(false)}
-                className="text-gray-400 hover:text-white"
+                className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-3">
+            <form onSubmit={handleSaveProduct} className="space-y-4 pt-1">
               <div>
                 <label className="text-xs font-semibold text-gray-300 block mb-1">Nome do Produto:</label>
                 <input
                   type="text"
                   required
+                  placeholder="Ex: Açaí no Copo 500ml, Jantinha Completa..."
                   value={editingProduct.name || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
                   className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-ember-500"
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">Categoria do Cardápio:</label>
+                  <select
+                    value={editingProduct.category_id || categories[0]?.id || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, category_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">Setor de Produção:</label>
+                  <select
+                    value={editingProduct.sector || 'cozinha'}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, sector: e.target.value as ProductionSector })
+                    }
+                    className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
+                  >
+                    <option value="churrasqueira">Churrasqueira</option>
+                    <option value="cozinha">Cozinha</option>
+                    <option value="bar">Bar</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="text-xs font-semibold text-gray-300 block mb-1">Descrição:</label>
+                <label className="text-xs font-semibold text-gray-300 block mb-1">Descrição Comercial:</label>
                 <textarea
                   rows={2}
+                  placeholder="Descreva os ingredientes, acompanhamentos e sabor..."
                   value={editingProduct.description || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
                   className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-ember-500 resize-none"
@@ -1803,7 +2068,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ct_cloud_sync;`}</pre>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">Preço de Venda (R$):</label>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">Preço Base de Venda (R$):</label>
                   <input
                     type="text"
                     required
@@ -1814,24 +2079,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ct_cloud_sync;`}</pre>
                   />
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">Setor de Produção:</label>
-                  <select
-                    value={editingProduct.sector || 'churrasqueira'}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, sector: e.target.value as ProductionSector })
-                    }
-                    className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
-                  >
-                    <option value="churrasqueira">Churrasqueira</option>
-                    <option value="cozinha">Cozinha</option>
-                    <option value="bar">Bar</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Controle de Estoque */}
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-800">
                 <div>
                   <label className="text-xs font-semibold text-gray-300 block mb-1">Qtd. em Estoque:</label>
                   <input
@@ -1847,60 +2094,231 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ct_cloud_sync;`}</pre>
                     className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white font-mono font-bold focus:outline-none focus:border-amber-500"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">Alerta Mínimo:</label>
+              {/* SEÇÃO DE COMPLEMENTOS & OPCIONAIS COM PREÇO */}
+              <div className="p-3.5 rounded-xl bg-charcoal-850 border border-gray-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Complementos &amp; Opcionais (Preço por Item)</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Para Açaí, Jantinhas, pontos ou adicionais com preço individual.
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold text-gray-400 bg-charcoal-800 px-2 py-0.5 rounded">
+                    {editingProduct.addons?.length || 0} cadastrados
+                  </span>
+                </div>
+
+                {/* Lista de complementos existentes */}
+                {editingProduct.addons && editingProduct.addons.length > 0 && (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {editingProduct.addons.map((add) => (
+                      <div
+                        key={add.id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-charcoal-800 border border-gray-700/80 text-xs"
+                      >
+                        <span className="text-gray-200 font-medium">{add.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-amber-400 text-xs">
+                            {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Grátis'}
+                          </span>
+                          <button
+                            type="button"
+                            title="Remover complemento"
+                            onClick={() => handleRemoveAddonFromProduct(add.id)}
+                            className="p-1 rounded text-gray-400 hover:text-red-400 hover:bg-red-950/40 transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Formulário rápido para adicionar complemento */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-1 border-t border-gray-800">
                   <input
-                    type="number"
-                    min={1}
-                    value={editingProduct.min_stock_alert ?? 10}
-                    onChange={(e) =>
-                      setEditingProduct({
-                        ...editingProduct,
-                        min_stock_alert: parseInt(e.target.value, 10) || 10,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:border-amber-500"
+                    type="text"
+                    placeholder="Nome (ex: Leite Ninho, Nutella, Picanha...)"
+                    value={newAddonName}
+                    onChange={(e) => setNewAddonName(e.target.value)}
+                    className="flex-1 px-2.5 py-1.5 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-amber-500"
                   />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Preço (ex: 3,00 ou 0)"
+                      value={newAddonPrice}
+                      onChange={(e) => setNewAddonPrice(e.target.value)}
+                      className="w-24 px-2.5 py-1.5 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white font-mono font-bold focus:outline-none focus:border-amber-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddAddonToProduct}
+                      className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1 transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Adicionar</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-charcoal-800/80 border border-gray-700">
-                <div>
-                  <p className="text-xs font-bold text-white">Baixa Automática no Estoque</p>
-                  <p className="text-[11px] text-gray-400">Descontar automaticamente a cada item vendido</p>
+              {/* OPÇÃO DE OBSERVAÇÕES & BAIXA DE ESTOQUE */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-charcoal-800/80 border border-gray-700">
+                  <div>
+                    <p className="text-xs font-bold text-white">Aceitar Observações</p>
+                    <p className="text-[10px] text-gray-400">Permitir recados do garçom/cliente</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        allow_notes: editingProduct.allow_notes === false ? true : false,
+                      })
+                    }
+                    className="text-xs"
+                  >
+                    {editingProduct.allow_notes !== false ? (
+                      <ToggleRight className="w-6 h-6 text-emerald-400" />
+                    ) : (
+                      <ToggleLeft className="w-6 h-6 text-gray-500" />
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEditingProduct({
-                      ...editingProduct,
-                      track_stock: editingProduct.track_stock === false ? true : false,
-                    })
-                  }
-                  className="text-xs"
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-charcoal-800/80 border border-gray-700">
+                  <div>
+                    <p className="text-xs font-bold text-white">Baixa no Estoque</p>
+                    <p className="text-[10px] text-gray-400">Descontar a cada venda</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        track_stock: editingProduct.track_stock === false ? true : false,
+                      })
+                    }
+                    className="text-xs"
+                  >
+                    {editingProduct.track_stock !== false ? (
+                      <ToggleRight className="w-6 h-6 text-emerald-400" />
+                    ) : (
+                      <ToggleLeft className="w-6 h-6 text-gray-500" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* RODAPÉ DO MODAL: EXCLUIR / CANCELAR / SALVAR */}
+              <div className="pt-3 border-t border-gray-800 flex items-center justify-between gap-2">
+                {editingProduct.id ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProduct(editingProduct.id!, editingProduct.name!)}
+                    className="px-3.5 py-2 rounded-xl bg-red-950/60 hover:bg-red-900 border border-red-800/60 text-red-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Excluir Produto</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsProductModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-ember-600 hover:bg-ember-500 text-white text-xs font-bold shadow-md shadow-ember-600/30 transition"
+                  >
+                    Salvar Produto
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Category Create Modal */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-charcoal-900 border border-gray-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-600/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-extrabold text-white">Nova Categoria</h3>
+              </div>
+              <button
+                onClick={() => setIsCategoryModalOpen(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCategory} className="space-y-3.5">
+              <div>
+                <label className="text-xs font-semibold text-gray-300 block mb-1">
+                  Nome da Categoria:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Bebidas & Chopp, Sobremesas..."
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-300 block mb-1">
+                  Setor Padrão de Produção:
+                </label>
+                <select
+                  value={newCategorySector}
+                  onChange={(e) => setNewCategorySector(e.target.value as ProductionSector)}
+                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-amber-500"
                 >
-                  {editingProduct.track_stock !== false ? (
-                    <ToggleRight className="w-7 h-7 text-emerald-400" />
-                  ) : (
-                    <ToggleLeft className="w-7 h-7 text-gray-500" />
-                  )}
-                </button>
+                  <option value="cozinha">Cozinha</option>
+                  <option value="churrasqueira">Churrasqueira</option>
+                  <option value="bar">Bar (Bebidas)</option>
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Define para qual tela (KDS Cozinha ou Grelha) os pedidos desta categoria irão por padrão.
+                </p>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsProductModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold"
+                  onClick={() => setIsCategoryModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-ember-600 hover:bg-ember-500 text-white text-xs font-bold shadow-md shadow-ember-600/30"
+                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md shadow-amber-600/30 transition"
                 >
-                  Salvar Produto
+                  Salvar Categoria
                 </button>
               </div>
             </form>

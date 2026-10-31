@@ -254,7 +254,7 @@ class SupabaseSyncService {
   }
 
   // --- CLOUD PERSISTENCE VIA ct_cloud_sync TABLE ---
-  public async saveToCloud(id: 'orders' | 'tabs' | 'profiles' | 'products', data: unknown) {
+  public async saveToCloud(id: 'orders' | 'tabs' | 'profiles' | 'products' | 'categories', data: unknown) {
     const client = getSupabaseClient();
     if (!client) return;
 

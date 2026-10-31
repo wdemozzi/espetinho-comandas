@@ -303,5 +303,38 @@ describe('DatabaseStore & Persistence', () => {
     db.updateServiceFeeSettings({ enabled: false });
     expect(db.getEstablishment().service_fee_enabled).toBe(false);
   });
+
+  it('should support product creation, addons with prices, categories, and deletion', () => {
+    // Check categories for Jantinhas and Açaí
+    const categories = db.getCategories();
+    expect(categories.some((c) => c.slug === 'jantinhas')).toBe(true);
+    expect(categories.some((c) => c.slug === 'acai-sobremesas')).toBe(true);
+
+    // Check seed products for Jantinhas and Açaí
+    const products = db.getProducts();
+    const acai = products.find((p) => p.name.includes('Açaí no Copo 300ml'));
+    expect(acai).toBeDefined();
+    expect(acai!.addons && acai!.addons.length > 0).toBe(true);
+    expect(acai!.addons!.some((a) => a.name.includes('Morango Fresco'))).toBe(true);
+
+    // Save a custom product
+    db.saveProduct({
+      name: 'Item Temporário Teste',
+      price_cents: 1500,
+      addons: [
+        { id: 'ad-test-1', product_id: '', name: 'Complemento Extra', price_cents: 350, is_available: true, sort_order: 1 },
+      ],
+    });
+
+    const created = db.getProducts().find((p) => p.name === 'Item Temporário Teste');
+    expect(created).toBeDefined();
+    expect(created!.addons?.length).toBe(1);
+    expect(created!.addons![0].price_cents).toBe(350);
+
+    // Delete the product
+    db.deleteProduct(created!.id);
+    const afterDelete = db.getProducts().find((p) => p.id === created!.id);
+    expect(afterDelete).toBeUndefined();
+  });
 });
 

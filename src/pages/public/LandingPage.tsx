@@ -989,18 +989,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <h3 className="font-extrabold text-lg text-white">{activeModalProduct.name}</h3>
                   <p className="text-xs text-gray-400 mt-0.5">{activeModalProduct.description}</p>
                 </div>
-                <span className="font-mono text-base font-bold text-amber-400 flex-shrink-0">
-                  {formatBRL(activeModalProduct.price_cents)}
-                </span>
+                <div className="text-right flex-shrink-0">
+                  <span className="font-mono text-base font-extrabold text-amber-400">
+                    {formatBRL(
+                      (activeModalProduct.price_cents + modalSelectedAddons.reduce((sum, a) => sum + a.price_cents, 0)) * modalQuantity
+                    )}
+                  </span>
+                  {modalSelectedAddons.length > 0 && (
+                    <p className="text-[10px] text-purple-300 font-medium">
+                      +{modalSelectedAddons.length} complementos
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Addons selection */}
               {activeModalProduct.addons && activeModalProduct.addons.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-gray-800">
-                  <label className="text-xs font-bold text-gray-300 block">
-                    Opções e Ponto da Carne:
-                  </label>
-                  <div className="space-y-1.5 max-h-44 overflow-y-auto">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-200 block">
+                      {activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
+                        ? '🍧 Escolha seus Complementos (preço por item):'
+                        : activeModalProduct.name.toLowerCase().includes('jantinha')
+                        ? '🍽️ Escolha o Espeto & Acompanhamentos:'
+                        : '✨ Opções & Personalização:'}
+                    </label>
+                    <span className="text-[10px] text-gray-400 font-mono">
+                      {modalSelectedAddons.length} selecionado(s)
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
                     {activeModalProduct.addons.map((addon) => {
                       const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
                       return (
@@ -1009,13 +1027,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           onClick={() => handleToggleAddon(addon)}
                           className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
                             isSelected
-                              ? 'bg-purple-950/60 border-purple-500 text-white'
+                              ? 'bg-purple-950/70 border-purple-500 text-white shadow font-semibold'
                               : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
                           }`}
                         >
-                          <span>{addon.name}</span>
-                          <span className="font-mono text-xs text-amber-400">
-                            {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Grátis'}
+                          <div className="flex items-center gap-2">
+                            <div className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-gray-600 bg-charcoal-900'}`}>
+                              {isSelected ? '✓' : ''}
+                            </div>
+                            <span>{addon.name}</span>
+                          </div>
+                          <span className={`font-mono text-xs font-bold ${isSelected ? 'text-amber-300' : addon.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'}`}>
+                            {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Incluso'}
                           </span>
                         </div>
                       );
@@ -1025,17 +1048,48 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               )}
 
               {/* Special notes */}
-              <div className="space-y-1 pt-2 border-t border-gray-800">
+              <div className="space-y-1.5 pt-2 border-t border-gray-800">
                 <label className="text-xs font-semibold text-gray-400 block">
                   Observações para a Cozinha (opcional):
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: Caprichar no limão, bem passado, etc."
+                  placeholder={
+                    activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
+                      ? 'Ex: Leite condensado no fundo, sem banana...'
+                      : 'Ex: Ao ponto, sem vinagrete, pouco sal...'
+                  }
                   value={modalNotes}
                   onChange={(e) => setModalNotes(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-charcoal-800 border border-gray-700 text-xs text-white focus:outline-none focus:border-purple-500"
                 />
+
+                {/* Sugestões rápidas de observações */}
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {(activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')) ? (
+                    ['Sem banana', 'Ninho no fundo', 'Caprichar na calda', 'Pouco doce'].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-purple-500 text-gray-300 hover:text-white transition"
+                      >
+                        +{sug}
+                      </button>
+                    ))
+                  ) : (
+                    ['Ao ponto', 'Bem passado', 'Pouco sal', 'Sem vinagrete', 'Sem farofa'].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-purple-500 text-gray-300 hover:text-white transition"
+                      >
+                        +{sug}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* Quantity selector & Add Button */}
