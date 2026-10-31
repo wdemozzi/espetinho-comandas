@@ -99,6 +99,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       product.category_id === 'b5' ||
       product.name.toLowerCase().includes('jantinha');
 
+    const isMilkShake =
+      product.category_id === 'b7' ||
+      product.name.toLowerCase().includes('milk');
+
     if (isJantinha && product.addons && product.addons.length > 0) {
       const defaultEspeto =
         product.addons.find(
@@ -114,6 +118,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       setModalSelectedAddons(
         defaultEspeto ? [{ name: defaultEspeto.name, price_cents: defaultEspeto.price_cents }] : []
       );
+    } else if (isMilkShake && product.addons && product.addons.length > 0) {
+      const defaultSabor =
+        product.addons.find(
+          (a) =>
+            (a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')) &&
+            a.price_cents === 0
+        ) ||
+        product.addons.find(
+          (a) => a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')
+        ) ||
+        product.addons[0];
+
+      setModalSelectedAddons(
+        defaultSabor ? [{ name: defaultSabor.name, price_cents: defaultSabor.price_cents }] : []
+      );
     } else {
       setModalSelectedAddons([]);
     }
@@ -126,6 +145,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         (a) => !a.name.toLowerCase().includes('espeto') && !a.name.startsWith('Espeto:')
       );
       return [...withoutOtherEspetos, addon];
+    });
+  };
+
+  const handleSelectSaborAddon = (addon: { name: string; price_cents: number }) => {
+    setModalSelectedAddons((prev) => {
+      const withoutOtherSabores = prev.filter(
+        (a) => !a.name.toLowerCase().includes('sabor') && !a.name.startsWith('Sabor:')
+      );
+      return [...withoutOtherSabores, addon];
     });
   };
 
@@ -1145,6 +1173,130 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   );
                 }
 
+                const isMilkShake =
+                  activeModalProduct.category_id === 'b7' ||
+                  activeModalProduct.name.toLowerCase().includes('milk');
+
+                const saborOptions = activeModalProduct.addons.filter(
+                  (a) => a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')
+                );
+                const extraMilkShakeOptions = activeModalProduct.addons.filter(
+                  (a) => !a.name.toLowerCase().includes('sabor') && !a.name.startsWith('Sabor:')
+                );
+
+                if (isMilkShake && saborOptions.length > 0) {
+                  return (
+                    <div className="space-y-3 pt-2 border-t border-gray-800">
+                      {/* Bloco 1: Escolha do Sabor (Obrigatório - 1 Opção Inclusa) */}
+                      <div className="p-3 rounded-xl bg-pink-950/30 border border-pink-800/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
+                              <span className="text-sm">🥤</span>
+                              <span>Escolha o Sabor do seu Milk-Shake:</span>
+                            </label>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              Selecione 1 sabor artesanal incluso:
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-pink-900/60 text-pink-300 border border-pink-700/50">
+                            1 Obrigatório
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
+                          {saborOptions.map((addon) => {
+                            const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                            return (
+                              <div
+                                key={addon.id}
+                                onClick={() => handleSelectSaborAddon(addon)}
+                                className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                                  isSelected
+                                    ? 'bg-pink-600 text-white border-pink-500 shadow-md shadow-pink-600/30 font-bold'
+                                    : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <div
+                                    className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
+                                      isSelected
+                                        ? 'border-white bg-white text-pink-700 font-black'
+                                        : 'border-gray-600 bg-charcoal-900'
+                                    }`}
+                                  >
+                                    {isSelected ? '●' : ''}
+                                  </div>
+                                  <span className="truncate">{addon.name.replace(/^Sabor:\s*/i, '')}</span>
+                                </div>
+                                <span
+                                  className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
+                                    isSelected
+                                      ? 'text-white'
+                                      : addon.price_cents > 0
+                                      ? 'text-amber-400'
+                                      : 'text-emerald-400'
+                                  }`}
+                                >
+                                  {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Incluso'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Bloco 2: Opcionais Extras */}
+                      {extraMilkShakeOptions.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-gray-200 block">
+                              ➕ Deseja Adicionar Opcionais? (Preço por Item)
+                            </label>
+                            <span className="text-[10px] text-gray-400 font-mono">
+                              {modalSelectedAddons.filter((a) => !a.name.toLowerCase().includes('sabor') && !a.name.startsWith('Sabor:')).length} selecionado(s)
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                            {extraMilkShakeOptions.map((addon) => {
+                              const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                              return (
+                                <div
+                                  key={addon.id}
+                                  onClick={() => handleToggleAddon(addon)}
+                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                                    isSelected
+                                      ? 'bg-purple-950/70 border-purple-500 text-white shadow font-semibold'
+                                      : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
+                                        isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-gray-600 bg-charcoal-900'
+                                      }`}
+                                    >
+                                      {isSelected ? '✓' : ''}
+                                    </div>
+                                    <span>{addon.name}</span>
+                                  </div>
+                                  <span
+                                    className={`font-mono text-xs font-bold ${
+                                      isSelected ? 'text-amber-300' : addon.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'
+                                    }`}
+                                  >
+                                    {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Grátis'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="space-y-2 pt-2 border-t border-gray-800">
                     <div className="flex items-center justify-between">
@@ -1203,7 +1355,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <input
                   type="text"
                   placeholder={
-                    activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
+                    activeModalProduct.name.toLowerCase().includes('milk')
+                      ? 'Ex: Caprichar no chantilly, calda na borda, bem geladinho...'
+                      : activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
                       ? 'Ex: Leite condensado no fundo, sem banana...'
                       : 'Ex: Ao ponto, sem vinagrete, pouco sal...'
                   }
@@ -1214,7 +1368,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 {/* Sugestões rápidas de observações */}
                 <div className="flex flex-wrap gap-1 pt-0.5">
-                  {(activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')) ? (
+                  {activeModalProduct.name.toLowerCase().includes('milk') ? (
+                    ['Calda na borda', 'Caprichar no chantilly', 'Sem canudo plástico', 'Bem geladinho'].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-pink-500 text-gray-300 hover:text-white transition"
+                      >
+                        +{sug}
+                      </button>
+                    ))
+                  ) : (activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')) ? (
                     ['Sem banana', 'Ninho no fundo', 'Caprichar na calda', 'Pouco doce'].map((sug) => (
                       <button
                         key={sug}
