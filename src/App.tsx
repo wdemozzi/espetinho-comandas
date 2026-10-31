@@ -73,6 +73,38 @@ function AppContent() {
 
       // Public Customer Root Domain
       setCurrentView('landing');
+
+      // Listen for hash or popstate navigation
+      const handleNavState = () => {
+        const updatedConfig = getSubdomainConfig();
+        if (updatedConfig.isStaffSubdomain) {
+          const isAuth = sessionStorage.getItem('ct_staff_auth') === 'true';
+          if (isAuth) {
+            setIsStaffAuthenticated(true);
+            setCurrentView(updatedConfig.targetView);
+          } else {
+            setIsStaffLoginModalOpen(true);
+          }
+        }
+      };
+
+      // Keyboard shortcut Ctrl + Shift + A to open staff PIN terminal anywhere
+      const handleShortcut = (e: KeyboardEvent) => {
+        if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a' || e.key === 'S' || e.key === 's')) {
+          e.preventDefault();
+          setIsStaffLoginModalOpen(true);
+        }
+      };
+
+      window.addEventListener('hashchange', handleNavState);
+      window.addEventListener('popstate', handleNavState);
+      window.addEventListener('keydown', handleShortcut);
+
+      return () => {
+        window.removeEventListener('hashchange', handleNavState);
+        window.removeEventListener('popstate', handleNavState);
+        window.removeEventListener('keydown', handleShortcut);
+      };
     }
   }, [subdomainConfig]);
 
@@ -110,7 +142,7 @@ function AppContent() {
     );
   }
 
-  // 2. Dedicated Staff Subdomain (admin.*, app.*, gestao.*, operacao.*, garcom.*, etc.)
+  // 2. Dedicated Staff Subdomain / Path (admin.*, app.*, /admin, /garcom, etc.)
   if (subdomainConfig.isStaffSubdomain && !isStaffAuthenticated) {
     return (
       <StaffLoginTerminal
@@ -126,14 +158,31 @@ function AppContent() {
     );
   }
 
-  // 3. Public Customer Landing Page (Zero staff access, zero backdoors)
+  // 3. Public Customer Landing Page
   if (!subdomainConfig.isStaffSubdomain && !isStaffAuthenticated) {
     return (
-      <LandingPage
-        onOrderCompleted={() => {
-          // Takeout order completed
-        }}
-      />
+      <>
+        <LandingPage
+          onStaffLoginClick={() => setIsStaffLoginModalOpen(true)}
+          onOrderCompleted={() => {
+            // Takeout order completed
+          }}
+        />
+
+        {/* Staff Authentication Terminal Modal if requested */}
+        {isStaffLoginModalOpen && (
+          <StaffLoginTerminal
+            onSuccess={() => {
+              setIsStaffAuthenticated(true);
+              setCurrentView('admin');
+              setIsStaffLoginModalOpen(false);
+            }}
+            onCancel={() => {
+              setIsStaffLoginModalOpen(false);
+            }}
+          />
+        )}
+      </>
     );
   }
 

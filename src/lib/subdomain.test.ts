@@ -23,6 +23,7 @@ describe('Subdomain Routing & Security Isolation', () => {
         protocol: url.protocol,
         port: url.port,
         host: url.host,
+        hash: url.hash,
       },
     };
   }
@@ -101,5 +102,29 @@ describe('Subdomain Routing & Security Isolation', () => {
     const customerUrl = getPublicCustomerUrl();
 
     expect(customerUrl).toBe('/');
+  });
+
+  it('identifies /admin/ with trailing slash as staff view', () => {
+    setMockLocation('https://espetinho-comandas.vercel.app/admin/');
+    const config = getSubdomainConfig();
+
+    expect(config.isStaffSubdomain).toBe(true);
+    expect(config.targetView).toBe('admin');
+  });
+
+  it('identifies ?view=admin on root domain as staff view', () => {
+    setMockLocation('https://espetinho-comandas.vercel.app/?view=admin');
+    const config = getSubdomainConfig();
+
+    expect(config.isStaffSubdomain).toBe(true);
+    expect(config.targetView).toBe('admin');
+  });
+
+  it('identifies hash #admin as staff view', () => {
+    setMockLocation('https://espetinho-comandas.vercel.app/#admin');
+    const config = getSubdomainConfig();
+
+    expect(config.isStaffSubdomain).toBe(true);
+    expect(config.targetView).toBe('admin');
   });
 });

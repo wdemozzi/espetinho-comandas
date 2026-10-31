@@ -924,9 +924,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto mt-6 pt-6 border-t border-gray-900 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-gray-500">
+        <div className="max-w-7xl mx-auto mt-6 pt-6 border-t border-gray-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-gray-500">
           <p>CT Conveniência © {new Date().getFullYear()} • Todos os direitos reservados.</p>
-          <p>Avenida Rio Grande do Norte, 4365 • Umuarama - PR • CEP 87504-000</p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (onStaffLoginClick) {
+                  onStaffLoginClick();
+                } else {
+                  window.location.href = '/admin';
+                }
+              }}
+              className="text-gray-500 hover:text-purple-400 flex items-center gap-1.5 transition font-semibold"
+              title="Acesso da equipe com PIN de segurança"
+            >
+              <Lock className="w-3.5 h-3.5 text-gray-500" />
+              <span>Acesso Equipe (PIN)</span>
+            </button>
+            <span>•</span>
+            <p>Avenida Rio Grande do Norte, 4365 • Umuarama - PR</p>
+          </div>
         </div>
       </footer>
 
