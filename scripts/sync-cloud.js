@@ -253,6 +253,38 @@ async function syncToSupabase() {
     throw new Error(`Erro ao subir categorias: ${errText}`);
   }
   console.log('🎉 Categorias sincronizadas com sucesso no Supabase!');
+
+  // 4. Enviar perfis de equipe para ct_cloud_sync
+  const PROFILES = [
+    { id: 'u1', establishment_id: 'a0000000-0000-0000-0000-000000000001', full_name: 'Carlos Gerente', role: 'admin', phone: '(44) 99999-0001', pin_code: '9999', is_active: true, created_at: new Date().toISOString() },
+    { id: 'u2', establishment_id: 'a0000000-0000-0000-0000-000000000001', full_name: 'Marcos (Garçom 1)', role: 'garcom', phone: '(44) 99999-0002', pin_code: '1111', is_active: true, created_at: new Date().toISOString() },
+    { id: 'u2b', establishment_id: 'a0000000-0000-0000-0000-000000000001', full_name: 'Lucas (Garçom 2)', role: 'garcom', phone: '(44) 99999-0005', pin_code: '2222', is_active: true, created_at: new Date().toISOString() },
+    { id: 'u2c', establishment_id: 'a0000000-0000-0000-0000-000000000001', full_name: 'Gabriel (Garçom 3)', role: 'garcom', phone: '(44) 99999-0006', pin_code: '3333', is_active: true, created_at: new Date().toISOString() },
+    { id: 'u2d', establishment_id: 'a0000000-0000-0000-0000-000000000001', full_name: 'Juliana (Garçom 4)', role: 'garcom', phone: '(44) 99999-0007', pin_code: '4444', is_active: true, created_at: new Date().toISOString() },
+    { id: 'u3', establishment_id: 'a0000000-0000-0000-0000-000000000001', full_name: 'Zé da Brasa (Churrasqueiro)', role: 'cozinha', phone: '(44) 99999-0003', pin_code: '5555', is_active: true, created_at: new Date().toISOString() },
+    { id: 'u4', establishment_id: 'a0000000-0000-0000-0000-000000000001', full_name: 'Ana Caixa', role: 'caixa', phone: '(44) 99999-0004', pin_code: '6666', is_active: true, created_at: new Date().toISOString() },
+  ];
+
+  const upsertProfilesRes = await fetch(`${SUPABASE_URL}/rest/v1/ct_cloud_sync`, {
+    method: 'POST',
+    headers: {
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${ANON_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates',
+    },
+    body: JSON.stringify({
+      id: 'profiles',
+      data: PROFILES,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!upsertProfilesRes.ok) {
+    const errText = await upsertProfilesRes.text();
+    throw new Error(`Erro ao subir perfis: ${errText}`);
+  }
+  console.log('🎉 Perfis de equipe sincronizados com sucesso no Supabase!');
 }
 
 syncToSupabase().catch((err) => {

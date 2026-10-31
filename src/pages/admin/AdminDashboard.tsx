@@ -435,6 +435,18 @@ export const AdminDashboard: React.FC = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  const handleDeleteUser = (profile: Profile) => {
+    if (profiles.length <= 1) {
+      alert('Não é possível excluir o único usuário do sistema.');
+      return;
+    }
+    if (confirm(`Deseja realmente remover o usuário "${profile.full_name}"?`)) {
+      db.deleteProfile(profile.id);
+      setToastMessage(`Usuário "${profile.full_name}" removido com sucesso.`);
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
+
   const handleSaveAnonKey = (e: React.FormEvent) => {
     e.preventDefault();
     if (!anonKeyInput.trim()) return;
@@ -1735,14 +1747,26 @@ END $$;`;
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditUser(p)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-charcoal-800 hover:bg-gray-700 text-purple-300 font-bold text-xs border border-gray-700 transition"
-                  >
-                    <Edit2 className="w-3 h-3 text-purple-400" />
-                    <span>Editar PIN</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditUser(p)}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-charcoal-800 hover:bg-gray-700 text-purple-300 font-bold text-xs border border-gray-700 transition"
+                    >
+                      <Edit2 className="w-3 h-3 text-purple-400" />
+                      <span>Editar PIN</span>
+                    </button>
+                    {profiles.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUser(p)}
+                        className="p-1.5 rounded-lg bg-charcoal-800 hover:bg-red-950/60 text-gray-400 hover:text-red-400 border border-gray-700 transition"
+                        title="Excluir funcionário"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -1973,6 +1997,36 @@ CREATE TABLE IF NOT EXISTS public.ct_cloud_sync (
 ALTER TABLE public.ct_cloud_sync ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public Read/Write" ON public.ct_cloud_sync FOR ALL TO anon, authenticated USING (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.ct_cloud_sync;`}</pre>
+            </div>
+          </div>
+
+          {/* Subdomain & High Security Architecture Guide */}
+          <div className="p-6 rounded-2xl bg-charcoal-850 border border-purple-500/30 space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-purple-400" />
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                Arquitetura de Subdomínios & Segurança Isolada
+              </h3>
+            </div>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Para máxima segurança, o acesso de 5 cliques na logo no cardápio do cliente foi <strong className="text-emerald-400">100% desativado</strong>. Clientes comuns não conseguem acessar telas internas. A equipe operacional e administrativa opera isolada através de subdomínios:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <div className="p-3 rounded-xl bg-charcoal-900 border border-gray-800">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Subdomínio Gestão</span>
+                <span className="text-xs font-mono font-bold text-purple-300 block mt-0.5">admin.* ou /admin</span>
+                <span className="text-[11px] text-gray-500 mt-1 block">Abre diretamente o terminal administrativo com login por PIN.</span>
+              </div>
+              <div className="p-3 rounded-xl bg-charcoal-900 border border-gray-800">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Subdomínio Garçom / Salão</span>
+                <span className="text-xs font-mono font-bold text-purple-300 block mt-0.5">app.* ou garcom.*</span>
+                <span className="text-[11px] text-gray-500 mt-1 block">Abre diretamente o terminal de comandas e salão.</span>
+              </div>
+              <div className="p-3 rounded-xl bg-charcoal-900 border border-gray-800">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Domínio Raiz (Clientes)</span>
+                <span className="text-xs font-mono font-bold text-emerald-400 block mt-0.5">ctconveniencia...</span>
+                <span className="text-[11px] text-gray-500 mt-1 block">100% focado no cliente final, sem atalhos ocultos.</span>
+              </div>
             </div>
           </div>
         </div>

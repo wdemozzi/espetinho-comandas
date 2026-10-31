@@ -12,9 +12,11 @@ import { OperatorSwitchModal } from './components/common/OperatorSwitchModal';
 
 import { StaffLoginTerminal } from './components/common/StaffLoginTerminal';
 import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
+import { getSubdomainConfig, SubdomainConfig, getPublicCustomerUrl } from './lib/subdomain';
 
 function AppContent() {
   const { currentUser } = useAuth();
+  const [subdomainConfig] = useState<SubdomainConfig>(() => getSubdomainConfig());
   const [isStaffAuthenticated, setIsStaffAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('ct_staff_auth') === 'true';
@@ -22,11 +24,14 @@ function AppContent() {
     return false;
   });
   const [isStaffLoginModalOpen, setIsStaffLoginModalOpen] = useState<boolean>(false);
-  const [currentView, setCurrentView] = useState<string>('landing');
+  const [currentView, setCurrentView] = useState<string>(() => {
+    const config = getSubdomainConfig();
+    return config.isStaffSubdomain ? config.targetView : 'landing';
+  });
   const [tableToken, setTableToken] = useState<string | null>(null);
   const [cashierInitialTabId, setCashierInitialTabId] = useState<string | undefined>(undefined);
 
-  // Check query params for table QR code scan or direct staff navigation
+  // Check query params for table QR code scan, customer bio menu or staff subdomain
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -54,44 +59,22 @@ function AppContent() {
         return;
       }
 
-      const isStaffRoute =
-        view === 'sistema' ||
-        view === 'operacao' ||
-        view === 'admin' ||
-        pathname === '/sistema' ||
-        pathname === '/operacao' ||
-        pathname === '/admin' ||
-        pathname === '/painel' ||
-        pathname === '/login';
-
-      const isAlreadyAuth = sessionStorage.getItem('ct_staff_auth') === 'true';
-
-      if (isStaffRoute) {
+      // Operational subdomain / dedicated staff path
+      if (subdomainConfig.isStaffSubdomain) {
+        const isAlreadyAuth = sessionStorage.getItem('ct_staff_auth') === 'true';
         if (isAlreadyAuth) {
           setIsStaffAuthenticated(true);
-          setCurrentView('garcom');
+          setCurrentView(subdomainConfig.targetView);
         } else {
-          setIsStaffLoginModalOpen(true);
+          setIsStaffAuthenticated(false);
         }
-      } else if (isAlreadyAuth) {
-        setIsStaffAuthenticated(true);
-        setCurrentView('garcom');
-      } else {
-        setCurrentView('landing');
+        return;
       }
 
-      // Keyboard shortcut Ctrl + Shift + S to open staff terminal anywhere
-      const handleShortcut = (e: KeyboardEvent) => {
-        if (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 's')) {
-          e.preventDefault();
-          setIsStaffLoginModalOpen(true);
-        }
-      };
-
-      window.addEventListener('keydown', handleShortcut);
-      return () => window.removeEventListener('keydown', handleShortcut);
+      // Public Customer Root Domain
+      setCurrentView('landing');
     }
-  }, []);
+  }, [subdomainConfig]);
 
   const handleNavigateToCashier = (tabId: string) => {
     setCashierInitialTabId(tabId);
@@ -101,12 +84,14 @@ function AppContent() {
   const handleLockAndExitToLanding = () => {
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('ct_staff_auth');
-      if (window.location.pathname !== '/') {
-        window.history.replaceState({}, '', '/');
-      }
     }
     setIsStaffAuthenticated(false);
-    setCurrentView('landing');
+    if (!subdomainConfig.isStaffSubdomain) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        window.history.replaceState({}, '', '/');
+      }
+      setCurrentView('landing');
+    }
   };
 
   // 1. Digital Menu Customer Session (Either Table QR or Instagram Bio / Shared link)
@@ -125,34 +110,30 @@ function AppContent() {
     );
   }
 
-  // 2. Public Landing Page with SEO & Takeout Menu (Default for website visitors)
-  if (!isStaffAuthenticated) {
+  // 2. Dedicated Staff Subdomain (admin.*, app.*, gestao.*, operacao.*, garcom.*, etc.)
+  if (subdomainConfig.isStaffSubdomain && !isStaffAuthenticated) {
     return (
-      <>
-        <LandingPage
-          onStaffLoginClick={() => setIsStaffLoginModalOpen(true)}
-          onOrderCompleted={() => {
-            // Takeout order completed
-          }}
-        />
+      <StaffLoginTerminal
+        subdomainConfig={subdomainConfig}
+        onSuccess={() => {
+          setIsStaffAuthenticated(true);
+          setCurrentView(subdomainConfig.targetView);
+        }}
+        onCancel={() => {
+          window.location.href = getPublicCustomerUrl();
+        }}
+      />
+    );
+  }
 
-        {/* Dedicated High-Security Staff Authentication Terminal */}
-        {isStaffLoginModalOpen && (
-          <StaffLoginTerminal
-            onSuccess={() => {
-              setIsStaffAuthenticated(true);
-              setCurrentView('garcom');
-              setIsStaffLoginModalOpen(false);
-            }}
-            onCancel={() => {
-              setIsStaffLoginModalOpen(false);
-              if (typeof window !== 'undefined' && window.location.pathname !== '/') {
-                window.history.replaceState({}, '', '/');
-              }
-            }}
-          />
-        )}
-      </>
+  // 3. Public Customer Landing Page (Zero staff access, zero backdoors)
+  if (!subdomainConfig.isStaffSubdomain && !isStaffAuthenticated) {
+    return (
+      <LandingPage
+        onOrderCompleted={() => {
+          // Takeout order completed
+        }}
+      />
     );
   }
 

@@ -1,5 +1,5 @@
 import { getSupabaseClient, isSupabaseConfigured, getSupabaseDiagnostics } from './supabaseClient';
-import { Order, Tab, Profile, Product, OrderStatus } from '../types/database.types';
+import { Order, Tab, Profile, Product, Category, OrderStatus } from '../types/database.types';
 import { soundService, OrderReadyAlertData } from './sound';
 import { mergeOrders, mergeTabs } from './syncMerge';
 
@@ -14,6 +14,7 @@ type SyncCallback = {
     tabs?: Tab[];
     profiles?: Profile[];
     products?: Product[];
+    categories?: Category[];
   }) => void;
 };
 
@@ -68,6 +69,9 @@ class SupabaseSyncService {
     this.isConnecting = true;
 
     try {
+      // Pull immediately via REST while WebSocket connects
+      this.pullInitialStateFromCloud();
+
       if (this.channel) {
         client.removeChannel(this.channel);
         this.channel = null;
@@ -148,6 +152,8 @@ class SupabaseSyncService {
               this.callbacks?.onRemoteProfilesUpdated(row.data as Profile[]);
             } else if (row.id === 'products' && Array.isArray(row.data)) {
               this.callbacks?.onFullSyncReceived({ products: row.data as Product[] });
+            } else if (row.id === 'categories' && Array.isArray(row.data)) {
+              this.callbacks?.onFullSyncReceived({ categories: row.data as Category[] });
             }
             this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
@@ -344,6 +350,7 @@ class SupabaseSyncService {
         tabs?: Tab[];
         profiles?: Profile[];
         products?: Product[];
+        categories?: Category[];
       } = {};
 
       for (const row of data) {
@@ -355,6 +362,8 @@ class SupabaseSyncService {
           fullData.profiles = row.data as Profile[];
         } else if (row.id === 'products' && Array.isArray(row.data)) {
           fullData.products = row.data as Product[];
+        } else if (row.id === 'categories' && Array.isArray(row.data)) {
+          fullData.categories = row.data as Category[];
         }
       }
 

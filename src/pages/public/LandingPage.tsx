@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 
 interface LandingPageProps {
-  onStaffLoginClick: () => void;
+  onStaffLoginClick?: () => void;
   onOrderCompleted?: (orderId: string) => void;
 }
 
@@ -87,24 +87,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
   const [copiedPix, setCopiedPix] = useState<boolean>(false);
-  const [logoTapCount, setLogoTapCount] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // FAQ Accordion State
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [menuViewMode, setMenuViewMode] = useState<'compact' | 'grid'>('compact');
-
-  const handleLogoTap = () => {
-    setLogoTapCount((prev) => {
-      const next = prev + 1;
-      if (next >= 5) {
-        onStaffLoginClick();
-        return 0;
-      }
-      return next;
-    });
-    setTimeout(() => setLogoTapCount(0), 4000);
-  };
 
   const openProductModal = (product: Product) => {
     setActiveModalProduct(product);
@@ -265,8 +252,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* 2. PUBLIC NAVBAR */}
       <header className="sticky top-0 z-40 bg-[#0c0a17]/95 backdrop-blur-md border-b border-gray-800/80">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2">
-          {/* Logo & Brand with secret 5-tap gesture */}
-          <div onClick={handleLogoTap} className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer select-none min-w-0">
+          {/* Logo & Brand */}
+          <a href="#inicio" className="flex items-center gap-2.5 sm:gap-3 group select-none min-w-0 transition hover:opacity-90">
             <div className="relative flex-shrink-0">
               <img
                 src="/ct-logo.png"
@@ -283,7 +270,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 Cervejas, Espetos & Conveniência
               </span>
             </div>
-          </div>
+          </a>
 
           {/* Nav Anchors (Desktop) */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-gray-300">

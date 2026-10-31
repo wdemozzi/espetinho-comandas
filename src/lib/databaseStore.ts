@@ -622,6 +622,9 @@ class DatabaseStore {
         if (data.products && data.products.length > 0) {
           this.products = data.products;
         }
+        if (data.categories && data.categories.length > 0) {
+          this.categories = data.categories;
+        }
         this.persist();
         this.notify();
       },
@@ -1044,6 +1047,19 @@ class DatabaseStore {
     this.notify();
     supabaseSync.broadcastProfiles(this.profiles);
     supabaseSync.saveToCloud('profiles', this.profiles);
+  }
+
+  public deleteProfile(profileId: string): boolean {
+    const prevCount = this.profiles.length;
+    this.profiles = this.profiles.filter((p) => p.id !== profileId);
+    if (this.profiles.length !== prevCount) {
+      this.persist();
+      this.notify();
+      supabaseSync.broadcastProfiles(this.profiles);
+      supabaseSync.saveToCloud('profiles', this.profiles);
+      return true;
+    }
+    return false;
   }
 
   // --- ACTIONS: TABS (COMANDAS) ---

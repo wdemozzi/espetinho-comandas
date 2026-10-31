@@ -13,14 +13,18 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+import { SubdomainConfig, getPublicCustomerUrl } from '../../lib/subdomain';
+
 interface StaffLoginTerminalProps {
   onSuccess: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
+  subdomainConfig?: SubdomainConfig;
 }
 
 export const StaffLoginTerminal: React.FC<StaffLoginTerminalProps> = ({
   onSuccess,
   onCancel,
+  subdomainConfig,
 }) => {
   const { availableProfiles, loginWithPin } = useAuth();
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
@@ -50,7 +54,11 @@ export const StaffLoginTerminal: React.FC<StaffLoginTerminalProps> = ({
       } else if (e.key === 'Enter') {
         handleSubmitPin();
       } else if (e.key === 'Escape') {
-        onCancel();
+        if (onCancel) {
+          onCancel();
+        } else {
+          window.location.href = getPublicCustomerUrl();
+        }
       }
     };
 
@@ -121,27 +129,37 @@ export const StaffLoginTerminal: React.FC<StaffLoginTerminalProps> = ({
   return (
     <div className="fixed inset-0 z-[99999] bg-[#0c0a17] text-white flex flex-col justify-between overflow-y-auto font-sans p-4 sm:p-8">
       {/* Top Bar */}
-      <div className="max-w-4xl w-full mx-auto flex items-center justify-between pb-4 border-b border-gray-800">
+      <div className="max-w-4xl w-full mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
           <img src="/ct-logo.png" alt="CT Conveniência" className="w-10 h-10 object-contain drop-shadow" />
           <div>
             <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Terminal Operacional Restrito</span>
+              <span>{subdomainConfig?.displayName || 'Terminal Operacional Restrito'}</span>
               <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-purple-600/30 text-purple-300 border border-purple-500/40">
                 Seguro
               </span>
             </h1>
-            <p className="text-xs text-gray-400">Acesso exclusivo para Garçons, Cozinha, Caixa e Gerência</p>
+            <p className="text-xs text-gray-400">
+              {subdomainConfig?.isStaffSubdomain
+                ? `Subdomínio Ativo: ${subdomainConfig.subdomain} • Acesso restrito com PIN no banco de dados`
+                : 'Acesso exclusivo para Garçons, Cozinha, Caixa e Gerência'}
+            </p>
           </div>
         </div>
 
         <button
           type="button"
-          onClick={onCancel}
-          className="px-3.5 py-1.5 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-bold border border-gray-700 flex items-center gap-1.5 transition"
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+            } else {
+              window.location.href = getPublicCustomerUrl();
+            }
+          }}
+          className="px-3.5 py-1.5 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-bold border border-gray-700 flex items-center gap-1.5 transition self-end sm:self-auto"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Voltar ao Cardápio</span>
+          <span>Cardápio do Cliente</span>
         </button>
       </div>
 
