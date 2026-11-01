@@ -103,6 +103,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       product.category_id === 'b7' ||
       product.name.toLowerCase().includes('milk');
 
+    const isDrink =
+      product.category_id === 'b8' ||
+      product.name.toLowerCase().includes('copão') ||
+      product.name.toLowerCase().includes('copao') ||
+      product.name.toLowerCase().includes('drink') ||
+      product.name.toLowerCase().includes('alcoólico');
+
     if (isJantinha && product.addons && product.addons.length > 0) {
       const defaultEspeto =
         product.addons.find(
@@ -133,10 +140,59 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       setModalSelectedAddons(
         defaultSabor ? [{ name: defaultSabor.name, price_cents: defaultSabor.price_cents }] : []
       );
+    } else if (isDrink && product.addons && product.addons.length > 0) {
+      const defaultDestilado =
+        product.addons.find(
+          (a) =>
+            (a.name.toLowerCase().includes('destilado') ||
+              a.name.startsWith('Destilado:') ||
+              a.name.toLowerCase().includes('bebida') ||
+              a.name.startsWith('Bebida:')) &&
+            a.price_cents === 0
+        ) ||
+        product.addons.find(
+          (a) =>
+            a.name.toLowerCase().includes('destilado') ||
+            a.name.startsWith('Destilado:') ||
+            a.name.toLowerCase().includes('bebida') ||
+            a.name.startsWith('Bebida:')
+        );
+
+      const defaultSabor =
+        product.addons.find(
+          (a) =>
+            (a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')) &&
+            a.price_cents === 0
+        ) ||
+        product.addons.find(
+          (a) => a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')
+        );
+
+      const initialAddons: { name: string; price_cents: number }[] = [];
+      if (defaultDestilado) {
+        initialAddons.push({ name: defaultDestilado.name, price_cents: defaultDestilado.price_cents });
+      }
+      if (defaultSabor) {
+        initialAddons.push({ name: defaultSabor.name, price_cents: defaultSabor.price_cents });
+      }
+      setModalSelectedAddons(initialAddons);
     } else {
       setModalSelectedAddons([]);
     }
     setModalNotes('');
+  };
+
+  const handleSelectDestiladoAddon = (addon: { name: string; price_cents: number }) => {
+    setModalSelectedAddons((prev) => {
+      const withoutOtherDestilados = prev.filter(
+        (a) =>
+          !a.name.toLowerCase().includes('destilado') &&
+          !a.name.startsWith('Destilado:') &&
+          !a.name.toLowerCase().includes('bebida') &&
+          !a.name.startsWith('Bebida:')
+      );
+      return [...withoutOtherDestilados, addon];
+    });
   };
 
   const handleSelectEspetoAddon = (addon: { name: string; price_cents: number }) => {
@@ -606,6 +662,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Banner Editorial Especial de Drinks quando a categoria Drinks está ativa */}
+          {selectedCategory === 'b8' && (
+            <div className="max-w-5xl mx-auto mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-950/70 via-charcoal-900 to-purple-950/60 border border-amber-600/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center sm:text-left">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
+                  <span>🥃</span>
+                  <span>DRINKS & COPÕES OFICIAIS COSTA TEIXEIRA</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  Copão com Energético Monster, Milkshake Alcoólico & Roseta Tradicional
+                </h3>
+                <p className="text-xs text-gray-300 max-w-xl">
+                  Bons momentos, bons drinks e boa companhia! Escolha entre Whisky Cavalo Branco ou Vodka Nacional em copões de 300ml, 500ml e 700ml, ou experimente nosso exclusivo Milkshake Alcoólico.
+                </p>
+              </div>
+              <div className="flex-shrink-0 flex items-center gap-2">
+                <a
+                  href="/drinks-banner.jpg"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 transition flex items-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Ver Cardápio Oficial</span>
+                </a>
+              </div>
+            </div>
+          )}
 
           {/* Products Container (Compact List by Default on Mobile or Grid) */}
           {menuViewMode === 'compact' ? (
@@ -1274,6 +1359,212 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                     <div
                                       className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
                                         isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-gray-600 bg-charcoal-900'
+                                      }`}
+                                    >
+                                      {isSelected ? '✓' : ''}
+                                    </div>
+                                    <span>{addon.name}</span>
+                                  </div>
+                                  <span
+                                    className={`font-mono text-xs font-bold ${
+                                      isSelected ? 'text-amber-300' : addon.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'
+                                    }`}
+                                  >
+                                    {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Grátis'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                const isDrink =
+                  activeModalProduct.category_id === 'b8' ||
+                  activeModalProduct.name.toLowerCase().includes('copão') ||
+                  activeModalProduct.name.toLowerCase().includes('copao') ||
+                  activeModalProduct.name.toLowerCase().includes('drink') ||
+                  activeModalProduct.name.toLowerCase().includes('alcoólico');
+
+                const destiladoOptions = activeModalProduct.addons.filter(
+                  (a) =>
+                    a.name.toLowerCase().includes('destilado') ||
+                    a.name.startsWith('Destilado:') ||
+                    a.name.toLowerCase().includes('bebida') ||
+                    a.name.startsWith('Bebida:')
+                );
+
+                const drinkSaborOptions = activeModalProduct.addons.filter(
+                  (a) => a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')
+                );
+
+                const extraDrinkOptions = activeModalProduct.addons.filter(
+                  (a) =>
+                    !a.name.toLowerCase().includes('destilado') &&
+                    !a.name.startsWith('Destilado:') &&
+                    !a.name.toLowerCase().includes('bebida') &&
+                    !a.name.startsWith('Bebida:') &&
+                    !a.name.toLowerCase().includes('sabor') &&
+                    !a.name.startsWith('Sabor:')
+                );
+
+                if (isDrink && (destiladoOptions.length > 0 || drinkSaborOptions.length > 0 || extraDrinkOptions.length > 0)) {
+                  return (
+                    <div className="space-y-3 pt-2 border-t border-gray-800">
+                      {/* Bloco 1: Escolha do Destilado / Bebida Base */}
+                      {destiladoOptions.length > 0 && (
+                        <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                                <span className="text-sm">🥃</span>
+                                <span>Escolha a Bebida Base / Destilado:</span>
+                              </label>
+                              <p className="text-[11px] text-gray-400 mt-0.5">
+                                Selecione 1 destilado para o seu Copão ou Drink:
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">
+                              1 Obrigatório
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {destiladoOptions.map((addon) => {
+                              const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                              return (
+                                <div
+                                  key={addon.id}
+                                  onClick={() => handleSelectDestiladoAddon(addon)}
+                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                                    isSelected
+                                      ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-600/30 font-bold'
+                                      : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <div
+                                      className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
+                                        isSelected
+                                          ? 'border-white bg-white text-amber-700 font-black'
+                                          : 'border-gray-600 bg-charcoal-900'
+                                      }`}
+                                    >
+                                      {isSelected ? '●' : ''}
+                                    </div>
+                                    <span className="truncate">{addon.name.replace(/^(Destilado|Bebida):\s*/i, '')}</span>
+                                  </div>
+                                  <span
+                                    className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
+                                      isSelected
+                                        ? 'text-white'
+                                        : addon.price_cents > 0
+                                        ? 'text-amber-400'
+                                        : 'text-emerald-400'
+                                    }`}
+                                  >
+                                    {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Incluso'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bloco 2: Se for Milkshake Alcoólico, Seleção do Sabor */}
+                      {drinkSaborOptions.length > 0 && (
+                        <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-800/40 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                                <span className="text-sm">🥤</span>
+                                <span>Escolha o Sabor do Milkshake:</span>
+                              </label>
+                              <p className="text-[11px] text-gray-400 mt-0.5">
+                                Selecione 1 sabor artesanal incluso:
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700/50">
+                              1 Incluso
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-0.5">
+                            {drinkSaborOptions.map((addon) => {
+                              const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                              return (
+                                <div
+                                  key={addon.id}
+                                  onClick={() => handleSelectSaborAddon(addon)}
+                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                                    isSelected
+                                      ? 'bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-600/30 font-bold'
+                                      : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <div
+                                      className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
+                                        isSelected
+                                          ? 'border-white bg-white text-purple-700 font-black'
+                                          : 'border-gray-600 bg-charcoal-900'
+                                      }`}
+                                    >
+                                      {isSelected ? '●' : ''}
+                                    </div>
+                                    <span className="truncate">{addon.name.replace(/^Sabor:\s*/i, '')}</span>
+                                  </div>
+                                  <span
+                                    className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
+                                      isSelected
+                                        ? 'text-white'
+                                        : addon.price_cents > 0
+                                        ? 'text-amber-400'
+                                        : 'text-emerald-400'
+                                    }`}
+                                  >
+                                    {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Incluso'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bloco 3: Opcionais do Drink (Roseta de Limão e Sal, Gelo de Coco, etc.) */}
+                      {extraDrinkOptions.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-gray-200 flex items-center gap-1.5">
+                              <span>🍋</span>
+                              <span>Adicionais & Opcionais para seu Drink:</span>
+                            </label>
+                            <span className="text-[10px] text-gray-400 font-mono">
+                              {modalSelectedAddons.filter((a) => !destiladoOptions.some((d) => d.name === a.name) && !drinkSaborOptions.some((s) => s.name === a.name)).length} selecionado(s)
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                            {extraDrinkOptions.map((addon) => {
+                              const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                              return (
+                                <div
+                                  key={addon.id}
+                                  onClick={() => handleToggleAddon(addon)}
+                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                                    isSelected
+                                      ? 'bg-amber-950/70 border-amber-500 text-white shadow font-semibold'
+                                      : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
+                                        isSelected ? 'bg-amber-500 border-amber-400 text-white' : 'border-gray-600 bg-charcoal-900'
                                       }`}
                                     >
                                       {isSelected ? '✓' : ''}

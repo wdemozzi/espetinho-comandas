@@ -56,11 +56,12 @@ const INITIAL_PROFILES: Profile[] = [
 const INITIAL_CATEGORIES: Category[] = [
   { id: 'b1', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Espetinhos na Brasa', slug: 'espetinhos', icon: 'Flame', sort_order: 1, default_sector: 'churrasqueira', is_active: true, created_at: new Date().toISOString() },
   { id: 'b5', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Jantinhas Completas', slug: 'jantinhas', icon: 'Utensils', sort_order: 2, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
-  { id: 'b7', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Milk-Shake Cremoso', slug: 'milk-shake', icon: 'Sparkles', sort_order: 3, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
-  { id: 'b6', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Açaí & Sobremesas', slug: 'acai-sobremesas', icon: 'Sparkles', sort_order: 4, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
-  { id: 'b2', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Acompanhamentos', slug: 'acompanhamentos', icon: 'Utensils', sort_order: 5, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
-  { id: 'b3', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Porções & Petiscos', slug: 'porcoes', icon: 'Soup', sort_order: 6, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
-  { id: 'b4', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Bebidas & Chopp', slug: 'bebidas', icon: 'Beer', sort_order: 7, default_sector: 'bar', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b8', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Drinks & Copão', slug: 'drinks', icon: 'Wine', sort_order: 3, default_sector: 'bar', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b7', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Milk-Shake Cremoso', slug: 'milk-shake', icon: 'Sparkles', sort_order: 4, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b6', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Açaí & Sobremesas', slug: 'acai-sobremesas', icon: 'Sparkles', sort_order: 5, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b2', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Acompanhamentos', slug: 'acompanhamentos', icon: 'Utensils', sort_order: 6, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b3', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Porções & Petiscos', slug: 'porcoes', icon: 'Soup', sort_order: 7, default_sector: 'cozinha', is_active: true, created_at: new Date().toISOString() },
+  { id: 'b4', establishment_id: INITIAL_ESTABLISHMENT.id, name: 'Bebidas & Chopp', slug: 'bebidas', icon: 'Beer', sort_order: 8, default_sector: 'bar', is_active: true, created_at: new Date().toISOString() },
 ];
 
 const INITIAL_PRODUCTS: Product[] = [
@@ -492,6 +493,123 @@ const INITIAL_PRODUCTS: Product[] = [
       { id: 'ms714', product_id: 'p18', name: 'Calda de Morango Extra (+R$ 2,50)', price_cents: 250, is_available: true, sort_order: 14 },
     ],
   },
+  {
+    id: 'p19',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b8',
+    name: 'Copão com Energético 300ml',
+    description: 'Copão de 300ml com muito gelo, energético trincando e destilado à sua escolha (Whisky ou Vodka). Adicione roseta de limão para a experiência perfeita!',
+    image_url: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=600&q=80',
+    price_cents: 1000,
+    cost_price_cents: 400,
+    sector: 'bar',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 60,
+    track_stock: true,
+    min_stock_alert: 10,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'cp301', product_id: 'p19', name: 'Destilado: Vodka Nacional', price_cents: 0, is_available: true, sort_order: 1 },
+      { id: 'cp302', product_id: 'p19', name: 'Destilado: Whisky Cavalo Branco (+R$ 5,00)', price_cents: 500, is_available: true, sort_order: 2 },
+      { id: 'cp303', product_id: 'p19', name: 'Borda com Roseta de Limão e Sal (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 3 },
+      { id: 'cp304', product_id: 'p19', name: 'Gelo de Coco Especial (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 4 },
+    ],
+  },
+  {
+    id: 'p20',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b8',
+    name: 'Copão com Energético 500ml',
+    description: 'O tamanho mais pedido da casa! Copão de 500ml bem servido com gelo, energético gelado e destilado (Whisky Cavalo Branco ou Vodka).',
+    image_url: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80',
+    price_cents: 1500,
+    cost_price_cents: 650,
+    sector: 'bar',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 60,
+    track_stock: true,
+    min_stock_alert: 10,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'cp501', product_id: 'p20', name: 'Destilado: Vodka Nacional', price_cents: 0, is_available: true, sort_order: 1 },
+      { id: 'cp502', product_id: 'p20', name: 'Destilado: Whisky Cavalo Branco (+R$ 10,00)', price_cents: 1000, is_available: true, sort_order: 2 },
+      { id: 'cp503', product_id: 'p20', name: 'Borda com Roseta de Limão e Sal (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 3 },
+      { id: 'cp504', product_id: 'p20', name: 'Gelo de Coco Especial (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 4 },
+    ],
+  },
+  {
+    id: 'p21',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b8',
+    name: 'Copão com Energético Gigante 700ml',
+    description: 'Para curtir a noite toda! Copão gigante de 700ml com dose dupla, muito energético trincando e gelo.',
+    image_url: 'https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=600&q=80',
+    price_cents: 2000,
+    cost_price_cents: 900,
+    sector: 'bar',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 50,
+    track_stock: true,
+    min_stock_alert: 10,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'cp701', product_id: 'p21', name: 'Destilado: Vodka Nacional', price_cents: 0, is_available: true, sort_order: 1 },
+      { id: 'cp702', product_id: 'p21', name: 'Destilado: Whisky Cavalo Branco (+R$ 20,00)', price_cents: 2000, is_available: true, sort_order: 2 },
+      { id: 'cp703', product_id: 'p21', name: 'Borda com Roseta de Limão e Sal (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 3 },
+      { id: 'cp704', product_id: 'p21', name: 'Gelo de Coco Especial (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 4 },
+    ],
+  },
+  {
+    id: 'p22',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b8',
+    name: 'Milkshake Alcoólico Especial',
+    description: 'O famoso Milkshake Alcoólico da Costa Teixeira! Combinação irresistível de sorvete cremoso batido na hora com dose de destilado/licor e coberturas nobres. Consulte sabores e temos!',
+    image_url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80',
+    price_cents: 2500,
+    cost_price_cents: 1000,
+    sector: 'bar',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 45,
+    track_stock: true,
+    min_stock_alert: 8,
+    created_at: new Date().toISOString(),
+    addons: [
+      { id: 'ma1', product_id: 'p22', name: 'Bebida: Vodka Especial', price_cents: 0, is_available: true, sort_order: 1 },
+      { id: 'ma2', product_id: 'p22', name: 'Bebida: Licor Amarula (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 2 },
+      { id: 'ma3', product_id: 'p22', name: 'Bebida: Whisky Cavalo Branco (+R$ 4,00)', price_cents: 400, is_available: true, sort_order: 3 },
+      { id: 'ma4', product_id: 'p22', name: 'Bebida: Licor de Chocolate (+R$ 2,00)', price_cents: 200, is_available: true, sort_order: 4 },
+      { id: 'ma5', product_id: 'p22', name: 'Sabor: Morango', price_cents: 0, is_available: true, sort_order: 5 },
+      { id: 'ma6', product_id: 'p22', name: 'Sabor: Chocolate Nobre', price_cents: 0, is_available: true, sort_order: 6 },
+      { id: 'ma7', product_id: 'p22', name: 'Sabor: Maracujá Tropical', price_cents: 0, is_available: true, sort_order: 7 },
+      { id: 'ma8', product_id: 'p22', name: 'Sabor: Mocka Café Especial', price_cents: 0, is_available: true, sort_order: 8 },
+      { id: 'ma9', product_id: 'p22', name: 'Sabor: Banoffee', price_cents: 0, is_available: true, sort_order: 9 },
+      { id: 'ma10', product_id: 'p22', name: 'Chantilly Artesanal (+R$ 3,00)', price_cents: 300, is_available: true, sort_order: 10 },
+      { id: 'ma11', product_id: 'p22', name: 'Nutella Pura (+R$ 4,00)', price_cents: 400, is_available: true, sort_order: 11 },
+      { id: 'ma12', product_id: 'p22', name: 'Ovomaltine Crocante (+R$ 3,50)', price_cents: 350, is_available: true, sort_order: 12 },
+    ],
+  },
+  {
+    id: 'p23',
+    establishment_id: INITIAL_ESTABLISHMENT.id,
+    category_id: 'b8',
+    name: 'Roseta Tradicional no Copo',
+    description: 'Preparo clássico no copo com rodelas de limão espremido, cubos de gelo e borda salpicada com sal. Acompanhamento autêntico para drinks, cervejas e destilados!',
+    image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80',
+    price_cents: 300,
+    cost_price_cents: 70,
+    sector: 'bar',
+    is_available: true,
+    allow_notes: true,
+    stock_quantity: 100,
+    track_stock: false,
+    min_stock_alert: 0,
+    created_at: new Date().toISOString(),
+  },
 ];
 
 const INITIAL_TABLES: RestaurantTable[] = [
@@ -720,10 +838,14 @@ class DatabaseStore {
           this.tabs = mergeTabs(this.tabs, data.tabs);
         }
         if (data.products && data.products.length > 0) {
-          this.products = data.products;
+          const existingIds = new Set(data.products.map((p) => p.id));
+          const missingSeed = INITIAL_PRODUCTS.filter((ip) => !existingIds.has(ip.id));
+          this.products = [...data.products, ...missingSeed];
         }
         if (data.categories && data.categories.length > 0) {
-          this.categories = data.categories;
+          const existingIds = new Set(data.categories.map((c) => c.id));
+          const missingSeed = INITIAL_CATEGORIES.filter((ic) => !existingIds.has(ic.id));
+          this.categories = [...data.categories, ...missingSeed];
         }
         this.persist();
         this.notify();
