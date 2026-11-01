@@ -448,7 +448,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Banner Drinks Costa Teixeira */}
         {selectedCategory === 'b8' && (
-          <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-amber-950/70 via-charcoal-900 to-purple-950/60 border border-amber-600/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-amber-950/70 via-charcoal-900 to-purple-950/60 border border-amber-600/40 shadow-xl">
             <div className="space-y-1 text-center sm:text-left">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
                 <span>🥃</span>
@@ -461,15 +461,6 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                 Escolha seu destilado favorito (Whisky Cavalo Branco ou Vodka Nacional) nos tamanhos 300ml, 500ml e 700ml!
               </p>
             </div>
-            <a
-              href="/drinks-banner.jpg"
-              target="_blank"
-              rel="noreferrer"
-              className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 transition flex items-center gap-1.5 flex-shrink-0"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Ver Cardápio Físico</span>
-            </a>
           </div>
         )}
 
