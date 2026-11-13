@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'garcom' | 'cozinha' | 'caixa';
+export type UserRole = 'admin' | 'garcom' | 'churrasqueira' | 'cozinha' | 'bar' | 'caixa';
 export type ProductionSector = 'churrasqueira' | 'cozinha' | 'bar';
 export type TableStatus = 'livre' | 'ocupada' | 'reservada';
 export type TabStatus = 'open' | 'closing' | 'paid' | 'cancelled';

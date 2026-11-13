@@ -49,7 +49,7 @@ const INITIAL_PROFILES: Profile[] = [
   { id: 'u2b', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Lucas (Garçom 2)', role: 'garcom', phone: '(44) 99999-0005', pin_code: '2222', is_active: true, created_at: new Date().toISOString() },
   { id: 'u2c', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Gabriel (Garçom 3)', role: 'garcom', phone: '(44) 99999-0006', pin_code: '3333', is_active: true, created_at: new Date().toISOString() },
   { id: 'u2d', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Juliana (Garçom 4)', role: 'garcom', phone: '(44) 99999-0007', pin_code: '4444', is_active: true, created_at: new Date().toISOString() },
-  { id: 'u3', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Zé da Brasa (Churrasqueiro)', role: 'cozinha', phone: '(44) 99999-0003', pin_code: '5555', is_active: true, created_at: new Date().toISOString() },
+  { id: 'u3', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Zé da Brasa (Churrasqueiro)', role: 'churrasqueira', phone: '(44) 99999-0003', pin_code: '5555', is_active: true, created_at: new Date().toISOString() },
   { id: 'u4', establishment_id: INITIAL_ESTABLISHMENT.id, full_name: 'Ana Caixa', role: 'caixa', phone: '(44) 99999-0004', pin_code: '6666', is_active: true, created_at: new Date().toISOString() },
 ];
 
@@ -1695,6 +1695,9 @@ class DatabaseStore {
 
       const initialItemStatus: OrderStatus = params.origin === 'external_catalog' ? 'pending_confirmation' : 'received';
 
+      const matchedCategory = this.categories.find((c) => c.id === product.category_id);
+      const itemSector: ProductionSector = product.sector || matchedCategory?.default_sector || (product.name.toLowerCase().includes('espet') ? 'churrasqueira' : 'cozinha');
+
       return {
         id: `oi-${orderId}-${idx}`,
         order_id: orderId,
@@ -1707,7 +1710,7 @@ class DatabaseStore {
         addons_total_cents: addonsTotalCents,
         total_cents: itemTotalCents,
         notes: it.notes || null,
-        sector: product.sector,
+        sector: itemSector,
         status: initialItemStatus,
         prepared_at: null,
         delivered_at: null,
