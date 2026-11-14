@@ -1130,6 +1130,14 @@ class DatabaseStore {
       const isOccupied = !!active_tab || !!table.linked_table_id;
       const status: TableStatus = isOccupied ? 'ocupada' : 'livre';
 
+      // Garantir que a comanda ativa carregue a referência da mesa
+      if (active_tab) {
+        active_tab = {
+          ...active_tab,
+          table: active_tab.table || table,
+        };
+      }
+
       return {
         ...table,
         status,
@@ -1139,7 +1147,8 @@ class DatabaseStore {
   }
 
   public getTableById(id: string): RestaurantTable | undefined {
-    return this.getTables().find((t) => t.id === id);
+    if (!id) return undefined;
+    return this.getTables().find((t) => t.id === id || String(t.table_number) === String(id) || t.id.toLowerCase() === id.toLowerCase());
   }
 
   public getTableByQrToken(token: string): RestaurantTable | undefined {
@@ -1178,8 +1187,22 @@ class DatabaseStore {
   }
 
   public getTabs(): Tab[] {
+    const allTables = this.getTables();
     return this.tabs.map((tab) => {
-      const table = this.tables.find((tbl) => tbl.id === tab.table_id);
+      let table = allTables.find((tbl) => tbl.id === tab.table_id);
+      if (!table && tab.table_id) {
+        const num = parseInt(tab.table_id.replace(/\D/g, ''), 10);
+        if (!isNaN(num)) {
+          table = allTables.find((tbl) => tbl.table_number === num);
+        }
+      }
+      if (!table && tab.orders && tab.orders.length > 0) {
+        const orderTableNum = tab.orders.find((o) => o.table_number != null)?.table_number;
+        if (orderTableNum != null) {
+          table = allTables.find((tbl) => tbl.table_number === orderTableNum);
+        }
+      }
+
       const tabOrders = this.orders.filter((ord) => ord.items.some((item) => {
         // Match orders associated with tab
         return this.orders.some(o => o.id === ord.id);
@@ -1189,7 +1212,7 @@ class DatabaseStore {
 
       return {
         ...tab,
-        table,
+        table: table || tab.table,
         orders: tabOrders.length > 0 ? tabOrders : tab.orders || [],
         payments: tabPayments,
         splits: tabSplits,
@@ -1400,6 +1423,7 @@ class DatabaseStore {
       id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       establishment_id: this.establishment.id,
       table_id: table ? table.id : null,
+      table: table || undefined,
       opened_by: params.opened_by_user_id,
       closed_by: null,
       customer_name: params.customer_name || null,
