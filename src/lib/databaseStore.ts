@@ -694,6 +694,7 @@ class DatabaseStore {
   private listeners: Set<Listener> = new Set();
   private orderReadyListeners: Set<(alert: OrderReadyAlertData) => void> = new Set();
   private nextOrderNumber: number = 101;
+  private deletedProductIds: Set<string> = new Set();
 
   constructor() {
     this.loadFromStorage();
@@ -707,6 +708,16 @@ class DatabaseStore {
   private loadFromStorage() {
     if (typeof window === 'undefined') return;
     try {
+      const storedDeleted = localStorage.getItem('ct_deleted_product_ids');
+      if (storedDeleted) {
+        try {
+          const parsedDeleted = JSON.parse(storedDeleted);
+          if (Array.isArray(parsedDeleted)) {
+            this.deletedProductIds = new Set(parsedDeleted);
+          }
+        } catch {}
+      }
+
       const storedProfiles = localStorage.getItem('ct_profiles');
       if (storedProfiles) {
         const parsed = JSON.parse(storedProfiles);
@@ -743,9 +754,10 @@ class DatabaseStore {
       if (storedProducts) {
         const parsed = JSON.parse(storedProducts);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((p) => p.id));
-          const missingSeed = INITIAL_PRODUCTS.filter((ip) => !existingIds.has(ip.id));
-          this.products = [...parsed, ...missingSeed].map((p) => ({
+          const filtered = parsed.filter((p) => !this.deletedProductIds.has(p.id));
+          const existingIds = new Set(filtered.map((p) => p.id));
+          const missingSeed = INITIAL_PRODUCTS.filter((ip) => !existingIds.has(ip.id) && !this.deletedProductIds.has(ip.id));
+          this.products = [...filtered, ...missingSeed].map((p) => ({
             ...p,
             stock_quantity: typeof p.stock_quantity === 'number' ? p.stock_quantity : 40,
             track_stock: p.track_stock !== undefined ? p.track_stock : true,
@@ -816,6 +828,7 @@ class DatabaseStore {
       localStorage.setItem('ct_next_order_num', String(this.nextOrderNumber));
       localStorage.setItem('ct_payments', JSON.stringify(this.payments));
       localStorage.setItem('ct_cash_shifts', JSON.stringify(this.cashShifts));
+      localStorage.setItem('ct_deleted_product_ids', JSON.stringify(Array.from(this.deletedProductIds)));
     } catch (e) {
       console.warn('Erro ao salvar no localStorage:', e);
     }
@@ -891,9 +904,10 @@ class DatabaseStore {
           this.tabs = mergeTabs(this.tabs, data.tabs);
         }
         if (data.products && data.products.length > 0) {
-          const existingIds = new Set(data.products.map((p) => p.id));
-          const missingSeed = INITIAL_PRODUCTS.filter((ip) => !existingIds.has(ip.id));
-          this.products = [...data.products, ...missingSeed];
+          const validProducts = data.products.filter((p) => !this.deletedProductIds.has(p.id));
+          const existingIds = new Set(validProducts.map((p) => p.id));
+          const missingSeed = INITIAL_PRODUCTS.filter((ip) => !existingIds.has(ip.id) && !this.deletedProductIds.has(ip.id));
+          this.products = [...validProducts, ...missingSeed];
         }
         if (data.categories && data.categories.length > 0) {
           const existingIds = new Set(data.categories.map((c) => c.id));
@@ -1233,12 +1247,16 @@ class DatabaseStore {
       };
       this.products.unshift(newProduct);
     }
+    if (productData.id) {
+      this.deletedProductIds.delete(productData.id);
+    }
     this.persist();
     this.notify();
     supabaseSync.saveToCloud('products', this.products);
   }
 
   public deleteProduct(productId: string) {
+    this.deletedProductIds.add(productId);
     this.products = this.products.filter((p) => p.id !== productId);
     this.persist();
     this.notify();

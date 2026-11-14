@@ -177,7 +177,20 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       }
       setModalSelectedAddons(initialAddons);
     } else {
-      setModalSelectedAddons([]);
+      const isGenericSingle =
+        product.addon_selection_mode === 'single' ||
+        (product.addons && product.addons.some((a) => a.addon_type === 'single')) ||
+        product.name.toLowerCase().includes('catupiry') ||
+        product.name.toLowerCase().includes('caipirinha');
+
+      if (isGenericSingle && product.addons && product.addons.length > 0) {
+        const defaultOption =
+          product.addons.find((a) => a.price_cents === 0) ||
+          product.addons[0];
+        setModalSelectedAddons(defaultOption ? [{ name: defaultOption.name, price_cents: defaultOption.price_cents }] : []);
+      } else {
+        setModalSelectedAddons([]);
+      }
     }
     setModalNotes('');
   };

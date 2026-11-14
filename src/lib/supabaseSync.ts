@@ -284,14 +284,9 @@ class SupabaseSyncService {
               // Fusão inteligente de comandas: comandas pagas nunca voltam para abertas
               finalData = mergeTabs(remoteRow.data as Tab[], data as Tab[]);
             } else {
-              const map = new Map<string, any>();
-              for (const item of remoteRow.data) {
-                if (item && item.id) map.set(item.id, item);
-              }
-              for (const item of data) {
-                if (item && item.id) map.set(item.id, item);
-              }
-              finalData = Array.from(map.values());
+              // Para produtos, categorias e perfis: NÃO fazer fusão cega (union merge), pois ela re-adiciona produtos excluídos.
+              // A lista enviada pelo admin é a verdade absoluta.
+              finalData = data;
             }
           }
         } catch {

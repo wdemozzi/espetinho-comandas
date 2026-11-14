@@ -177,9 +177,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       }
       setModalSelectedAddons(initialAddons);
     } else {
-      setModalSelectedAddons([]);
+      const isGenericSingle =
+        product.addon_selection_mode === 'single' ||
+        (product.addons && product.addons.some((a) => a.addon_type === 'single')) ||
+        product.name.toLowerCase().includes('catupiry') ||
+        product.name.toLowerCase().includes('caipirinha');
+
+      if (isGenericSingle && product.addons && product.addons.length > 0) {
+        const defaultOption =
+          product.addons.find((a) => a.price_cents === 0) ||
+          product.addons[0];
+        setModalSelectedAddons(defaultOption ? [{ name: defaultOption.name, price_cents: defaultOption.price_cents }] : []);
+      } else {
+        setModalSelectedAddons([]);
+      }
     }
     setModalNotes('');
+  };
+
+  const handleSelectSingleAddon = (addon: { name: string; price_cents: number }) => {
+    setModalSelectedAddons([{ name: addon.name, price_cents: addon.price_cents }]);
   };
 
   const handleSelectDestiladoAddon = (addon: { name: string; price_cents: number }) => {
@@ -1573,6 +1590,70 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           </div>
                         </div>
                       )}
+                    </div>
+                  );
+                }
+
+                const isGenericSingle =
+                  activeModalProduct.addon_selection_mode === 'single' ||
+                  (activeModalProduct.addons && activeModalProduct.addons.some((a) => a.addon_type === 'single')) ||
+                  activeModalProduct.name.toLowerCase().includes('catupiry') ||
+                  activeModalProduct.name.toLowerCase().includes('caipirinha');
+
+                const groupTitle =
+                  activeModalProduct.addon_group_title ||
+                  (activeModalProduct.name.toLowerCase().includes('espet')
+                    ? 'Escolha o Tipo de Espeto (1 Incluso):'
+                    : activeModalProduct.name.toLowerCase().includes('caipirinha')
+                    ? 'Escolha o Sabor da Caipirinha (1 Incluso):'
+                    : 'Escolha 1 Opção (Incluso no Valor):');
+
+                if (isGenericSingle) {
+                  return (
+                    <div className="space-y-2 pt-2 border-t border-gray-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                          <span>🔘</span>
+                          <span>{groupTitle}</span>
+                        </label>
+                        <span className="text-[10px] text-amber-400 font-mono font-bold px-2 py-0.5 rounded bg-amber-900/60 border border-amber-700/50">
+                          1 Obrigatório
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                        {activeModalProduct.addons.map((addon) => {
+                          const isSelected = modalSelectedAddons.some((a) => a.name === addon.name);
+                          return (
+                            <div
+                              key={addon.id}
+                              onClick={() => handleSelectSingleAddon(addon)}
+                              className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
+                                isSelected
+                                  ? 'bg-amber-600 text-white border-amber-500 shadow-md font-bold'
+                                  : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-4 h-4 rounded-full flex items-center justify-center border text-[9px] ${
+                                    isSelected ? 'bg-white text-amber-700 border-white font-black' : 'border-gray-500 bg-charcoal-900'
+                                  }`}
+                                >
+                                  {isSelected ? '●' : ''}
+                                </div>
+                                <span>{addon.name.replace(/^(Espeto|Sabor):\s*/i, '')}</span>
+                              </div>
+                              <span
+                                className={`font-mono text-xs font-bold ${
+                                  isSelected ? 'text-white' : addon.price_cents > 0 ? 'text-amber-400' : 'text-emerald-400'
+                                }`}
+                              >
+                                {addon.price_cents > 0 ? `+${formatBRL(addon.price_cents)}` : 'Incluso'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 }
