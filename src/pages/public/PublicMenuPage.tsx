@@ -23,7 +23,6 @@ import {
   Share2,
   Copy,
   Check,
-  ExternalLink,
 } from 'lucide-react';
 
 interface PublicMenuPageProps {
@@ -58,6 +57,15 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
   const [modalSelectedAddons, setModalSelectedAddons] = useState<{ name: string; price_cents: number }[]>([]);
   const [modalNotes, setModalNotes] = useState<string>('');
 
+  // Follow-up pós-adição para produtos de escolha única (1 sabor por item, ex: Catupiry, Caipirinha)
+  const [singleChoiceFollowUp, setSingleChoiceFollowUp] = useState<{
+    product: Product;
+    lastAddonName: string;
+    countAdded: number;
+    stepNumber: number;
+  } | null>(null);
+  const [flavorStepCount, setFlavorStepCount] = useState<number>(1);
+
   // Checkout form (dine_in for table QR, takeout for web catalog)
   const [orderType, setOrderType] = useState<'dine_in' | 'takeout'>('takeout');
   const [customerName, setCustomerName] = useState<string>('');
@@ -83,147 +91,28 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
   const openProductModal = (product: Product) => {
     setActiveModalProduct(product);
     setModalQuantity(1);
+    setModalNotes('');
+    setSingleChoiceFollowUp(null);
+    setFlavorStepCount(1);
 
-    const isJantinha =
-      product.category_id === 'b5' ||
-      product.name.toLowerCase().includes('jantinha');
-
-    const isMilkShake =
-      product.category_id === 'b7' ||
-      product.name.toLowerCase().includes('milk');
-
-    const isDrink =
-      product.category_id === 'b8' ||
-      product.name.toLowerCase().includes('copão') ||
-      product.name.toLowerCase().includes('copao') ||
-      product.name.toLowerCase().includes('drink') ||
-      product.name.toLowerCase().includes('alcoólico');
-
-    const isSingleChoice =
+    const isGenericSingle =
       product.addon_selection_mode === 'single' ||
+      (product.addons && product.addons.some((a) => a.addon_type === 'single')) ||
       product.name.toLowerCase().includes('catupiry') ||
       product.name.toLowerCase().includes('caipirinha');
 
-    if (isSingleChoice && product.addons && product.addons.length > 0) {
-      const defaultOpt =
-        product.addons.find((a) => a.price_cents === 0) || product.addons[0];
-      setModalSelectedAddons(
-        defaultOpt ? [{ name: defaultOpt.name, price_cents: defaultOpt.price_cents }] : []
-      );
-    } else if (isJantinha && product.addons && product.addons.length > 0) {
-      const defaultEspeto =
-        product.addons.find(
-          (a) =>
-            (a.name.toLowerCase().includes('espeto') || a.name.startsWith('Espeto:')) &&
-            a.price_cents === 0
-        ) ||
-        product.addons.find(
-          (a) => a.name.toLowerCase().includes('espeto') || a.name.startsWith('Espeto:')
-        ) ||
+    if (isGenericSingle && product.addons && product.addons.length > 0) {
+      const defaultOption =
+        product.addons.find((a) => a.price_cents === 0) ||
         product.addons[0];
-
-      setModalSelectedAddons(
-        defaultEspeto ? [{ name: defaultEspeto.name, price_cents: defaultEspeto.price_cents }] : []
-      );
-    } else if (isMilkShake && product.addons && product.addons.length > 0) {
-      const defaultSabor =
-        product.addons.find(
-          (a) =>
-            (a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')) &&
-            a.price_cents === 0
-        ) ||
-        product.addons.find(
-          (a) => a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')
-        ) ||
-        product.addons[0];
-
-      setModalSelectedAddons(
-        defaultSabor ? [{ name: defaultSabor.name, price_cents: defaultSabor.price_cents }] : []
-      );
-    } else if (isDrink && product.addons && product.addons.length > 0) {
-      const defaultDestilado =
-        product.addons.find(
-          (a) =>
-            (a.name.toLowerCase().includes('destilado') ||
-              a.name.startsWith('Destilado:') ||
-              a.name.toLowerCase().includes('bebida') ||
-              a.name.startsWith('Bebida:')) &&
-            a.price_cents === 0
-        ) ||
-        product.addons.find(
-          (a) =>
-            a.name.toLowerCase().includes('destilado') ||
-            a.name.startsWith('Destilado:') ||
-            a.name.toLowerCase().includes('bebida') ||
-            a.name.startsWith('Bebida:')
-        );
-
-      const defaultSabor =
-        product.addons.find(
-          (a) =>
-            (a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')) &&
-            a.price_cents === 0
-        ) ||
-        product.addons.find(
-          (a) => a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')
-        );
-
-      const initialAddons: { name: string; price_cents: number }[] = [];
-      if (defaultDestilado) {
-        initialAddons.push({ name: defaultDestilado.name, price_cents: defaultDestilado.price_cents });
-      }
-      if (defaultSabor) {
-        initialAddons.push({ name: defaultSabor.name, price_cents: defaultSabor.price_cents });
-      }
-      setModalSelectedAddons(initialAddons);
+      setModalSelectedAddons(defaultOption ? [{ name: defaultOption.name, price_cents: defaultOption.price_cents }] : []);
     } else {
-      const isGenericSingle =
-        product.addon_selection_mode === 'single' ||
-        (product.addons && product.addons.some((a) => a.addon_type === 'single')) ||
-        product.name.toLowerCase().includes('catupiry') ||
-        product.name.toLowerCase().includes('caipirinha');
-
-      if (isGenericSingle && product.addons && product.addons.length > 0) {
-        const defaultOption =
-          product.addons.find((a) => a.price_cents === 0) ||
-          product.addons[0];
-        setModalSelectedAddons(defaultOption ? [{ name: defaultOption.name, price_cents: defaultOption.price_cents }] : []);
-      } else {
-        setModalSelectedAddons([]);
-      }
+      setModalSelectedAddons([]);
     }
-    setModalNotes('');
   };
 
-  const handleSelectDestiladoAddon = (addon: { name: string; price_cents: number }) => {
-    setModalSelectedAddons((prev) => {
-      const withoutOtherDestilados = prev.filter(
-        (a) =>
-          !a.name.toLowerCase().includes('destilado') &&
-          !a.name.startsWith('Destilado:') &&
-          !a.name.toLowerCase().includes('bebida') &&
-          !a.name.startsWith('Bebida:')
-      );
-      return [...withoutOtherDestilados, addon];
-    });
-  };
-
-  const handleSelectEspetoAddon = (addon: { name: string; price_cents: number }) => {
-    setModalSelectedAddons((prev) => {
-      const withoutOtherEspetos = prev.filter(
-        (a) => !a.name.toLowerCase().includes('espeto') && !a.name.startsWith('Espeto:')
-      );
-      return [...withoutOtherEspetos, addon];
-    });
-  };
-
-  const handleSelectSaborAddon = (addon: { name: string; price_cents: number }) => {
-    setModalSelectedAddons((prev) => {
-      const withoutOtherSabores = prev.filter(
-        (a) => !a.name.toLowerCase().includes('sabor') && !a.name.startsWith('Sabor:')
-      );
-      return [...withoutOtherSabores, addon];
-    });
+  const handleSelectSingleAddon = (addon: { name: string; price_cents: number }) => {
+    setModalSelectedAddons([{ name: addon.name, price_cents: addon.price_cents }]);
   };
 
   const handleToggleAddon = (addon: { name: string; price_cents: number }) => {
@@ -235,15 +124,75 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
 
   const handleAddToCartFromModal = () => {
     if (!activeModalProduct) return;
+
+    const isGenericSingle =
+      activeModalProduct.addon_selection_mode === 'single' ||
+      (activeModalProduct.addons && activeModalProduct.addons.some((a) => a.addon_type === 'single')) ||
+      activeModalProduct.name.toLowerCase().includes('catupiry') ||
+      activeModalProduct.name.toLowerCase().includes('caipirinha');
+
+    const selectedFlavor = modalSelectedAddons[0]?.name.replace(/^(Espeto|Sabor):\s*/i, '') || 'Opção selecionada';
+    const currentProduct = activeModalProduct;
+    const currentNotes = modalNotes;
+    const currentAddons = [...modalSelectedAddons];
+    const currentQuantity = modalQuantity;
+    const currentStep = flavorStepCount;
+
     setCart((prev) => [
       ...prev,
       {
-        product: activeModalProduct,
-        quantity: modalQuantity,
-        selectedAddons: modalSelectedAddons,
-        notes: modalNotes,
+        product: currentProduct,
+        quantity: currentQuantity,
+        selectedAddons: currentAddons,
+        notes: currentNotes,
       },
     ]);
+
+    // Se for produto com escolha única (1 sabor por espeto/bebida), exibe imediatamente a opção de pedir mais outro sabor
+    if (isGenericSingle) {
+      setSingleChoiceFollowUp({
+        product: currentProduct,
+        lastAddonName: selectedFlavor,
+        countAdded: currentQuantity,
+        stepNumber: currentStep,
+      });
+      return;
+    }
+
+    setActiveModalProduct(null);
+  };
+
+  // Follow-up: Escolher outro sabor para o próximo espetinho / bebida
+  const handlePickAnotherFlavor = () => {
+    if (!singleChoiceFollowUp) return;
+    setFlavorStepCount((prev) => prev + 1);
+    setModalSelectedAddons([]);
+    setModalQuantity(1);
+    setModalNotes('');
+    setSingleChoiceFollowUp(null);
+  };
+
+  // Follow-up: Manter o mesmo sabor (+1)
+  const handleRepeatSameFlavor = () => {
+    if (!singleChoiceFollowUp) return;
+    const { product } = singleChoiceFollowUp;
+    setCart((prev) => {
+      const lastIndex = prev.length - 1;
+      if (lastIndex >= 0 && prev[lastIndex].product.id === product.id) {
+        return prev.map((item, idx) =>
+          idx === lastIndex ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return prev;
+    });
+    setSingleChoiceFollowUp((prev) =>
+      prev ? { ...prev, countAdded: prev.countAdded + 1 } : null
+    );
+  };
+
+  // Follow-up: Concluir e fechar modal
+  const handleFinishFollowUp = () => {
+    setSingleChoiceFollowUp(null);
     setActiveModalProduct(null);
   };
 
@@ -470,24 +419,6 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
 
       {/* Products Feed */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Banner Drinks Costa Teixeira */}
-        {selectedCategory === 'b8' && (
-          <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-amber-950/70 via-charcoal-900 to-purple-950/60 border border-amber-600/40 shadow-xl">
-            <div className="space-y-1 text-center sm:text-left">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
-                <span>🥃</span>
-                <span>DRINKS & COPÕES OFICIAIS COSTA TEIXEIRA</span>
-              </div>
-              <h3 className="text-base font-black text-white">
-                Copão com Energético Monster, Milkshake Alcoólico & Roseta Tradicional
-              </h3>
-              <p className="text-xs text-gray-300">
-                Escolha seu destilado favorito (Whisky Cavalo Branco ou Vodka Nacional) nos tamanhos 300ml, 500ml e 700ml!
-              </p>
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {products
             .filter((p) => p.category_id === selectedCategory && p.is_available)
@@ -554,7 +485,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       {activeModalProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="relative w-full max-w-md bg-charcoal-900 border border-gray-700 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            {activeModalProduct.image_url && (
+            {activeModalProduct.image_url && !singleChoiceFollowUp && (
               <div className="h-44 w-full bg-charcoal-950 overflow-hidden relative">
                 <img
                   src={activeModalProduct.image_url}
@@ -562,7 +493,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                   className="w-full h-full object-cover"
                 />
                 <button
-                  onClick={() => setActiveModalProduct(null)}
+                  onClick={handleFinishFollowUp}
                   className="absolute right-3 top-3 p-2 rounded-full bg-black/60 text-white hover:bg-black transition"
                 >
                   <X className="w-5 h-5" />
@@ -570,111 +501,242 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
               </div>
             )}
 
-            <div className="p-5 space-y-4 overflow-y-auto flex-1">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-extrabold text-white">{activeModalProduct.name}</h3>
-                  <p className="text-xs text-gray-400 mt-1">{activeModalProduct.description}</p>
+            {/* Top Bar if image is hidden or in follow-up */}
+            {(!activeModalProduct.image_url || singleChoiceFollowUp) && (
+              <div className="p-3 bg-charcoal-850 border-b border-gray-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-ember-400" />
+                  <span className="font-extrabold text-sm text-white">{activeModalProduct.name}</span>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="font-mono font-black text-ember-400 text-lg">
-                    {formatBRL(
-                      (activeModalProduct.price_cents + modalSelectedAddons.reduce((sum, a) => sum + a.price_cents, 0)) * modalQuantity
-                    )}
-                  </p>
-                  {modalSelectedAddons.length > 0 && (
-                    <span className="text-[10px] text-purple-300 font-semibold">
-                      +{modalSelectedAddons.length} complementos
-                    </span>
-                  )}
+                <button
+                  type="button"
+                  onClick={handleFinishFollowUp}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-charcoal-800 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            {singleChoiceFollowUp ? (
+              /* TELA DE DECISÃO: ESCOLHER OUTRO SABOR OU MANTER O MESMO */
+              <div className="p-5 space-y-4 overflow-y-auto flex-1">
+                <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/50 flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                    <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-white">
+                      {singleChoiceFollowUp.product.name} Adicionado!
+                    </h4>
+                    <p className="text-xs text-emerald-300 font-bold mt-0.5">
+                      Sabor escolhido: <span className="text-white underline">{singleChoiceFollowUp.lastAddonName}</span>
+                    </p>
+                    <p className="text-[11px] text-gray-300 mt-1">
+                      {singleChoiceFollowUp.countAdded > 1
+                        ? `${singleChoiceFollowUp.countAdded} unidades deste sabor já estão na sua sacola.`
+                        : '1 unidade já adicionada à sua sacola.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-charcoal-850 border border-amber-500/40 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-300 font-extrabold text-xs uppercase tracking-wide">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span>Deseja adicionar mais um {singleChoiceFollowUp.product.name.toLowerCase().includes('caipirinha') ? 'copo' : 'espeto'}?</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Opção 1: Escolher outro sabor */}
+                    <button
+                      type="button"
+                      onClick={handlePickAnotherFlavor}
+                      className="w-full py-3 px-3.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs flex items-center justify-between shadow-lg shadow-amber-600/30 transition active:scale-[0.98]"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                        <span>Escolher OUTRO sabor (para o próximo)</span>
+                      </div>
+                      <span className="text-[11px] bg-black/30 px-2 py-0.5 rounded font-mono font-bold">
+                        +{formatBRL(singleChoiceFollowUp.product.price_cents)}
+                      </span>
+                    </button>
+
+                    {/* Opção 2: Manter o mesmo sabor */}
+                    <button
+                      type="button"
+                      onClick={handleRepeatSameFlavor}
+                      className="w-full py-3 px-3.5 rounded-xl bg-charcoal-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-bold text-xs flex items-center justify-between transition active:scale-[0.98]"
+                    >
+                      <div className="flex items-center gap-2 text-left truncate">
+                        <span className="text-base">🔁</span>
+                        <span className="truncate">Manter o MESMO sabor (+1 {singleChoiceFollowUp.lastAddonName})</span>
+                      </div>
+                      <span className="text-[11px] bg-charcoal-900 px-2 py-0.5 rounded font-mono text-gray-300 font-bold">
+                        +{formatBRL(singleChoiceFollowUp.product.price_cents)}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleFinishFollowUp}
+                    className="w-full py-2.5 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-gray-300 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-gray-700 transition"
+                  >
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Concluir e ver Sacola ({cartItemsCount} {cartItemsCount === 1 ? 'item' : 'itens'})</span>
+                  </button>
                 </div>
               </div>
+            ) : (
+              /* FORMULÁRIO NORMAL DE ESCOLHA DO PRODUTO */
+              <>
+                <div className="p-5 space-y-4 overflow-y-auto flex-1">
+                  {/* Banner caso esteja no 2º espeto em diante */}
+                  {flavorStepCount > 1 && (
+                    <div className="p-3 bg-amber-950/40 border border-amber-500/50 rounded-xl text-amber-200 text-xs flex items-center justify-between animate-pulse">
+                      <span className="font-bold flex items-center gap-1.5">
+                        <span>🍢</span>
+                        <span>{flavorStepCount}º Espeto • Escolha o próximo sabor:</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-600 text-white font-mono font-bold px-2 py-0.5 rounded">
+                        1 Incluso
+                      </span>
+                    </div>
+                  )}
 
-              {/* Addons Selection */}
-              {activeModalProduct.addons && activeModalProduct.addons.length > 0 && (() => {
-                const isJantinha =
-                  activeModalProduct.category_id === 'b5' ||
-                  activeModalProduct.name.toLowerCase().includes('jantinha');
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-white">{activeModalProduct.name}</h3>
+                      <p className="text-xs text-gray-400 mt-1">{activeModalProduct.description}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-mono font-black text-ember-400 text-lg">
+                        {formatBRL(
+                          (activeModalProduct.price_cents + modalSelectedAddons.reduce((sum, a) => sum + a.price_cents, 0)) * modalQuantity
+                        )}
+                      </p>
+                      {modalSelectedAddons.length > 0 && (
+                        <span className="text-[10px] text-purple-300 font-semibold">
+                          +{modalSelectedAddons.length} complementos
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-                const espetoOptions = activeModalProduct.addons.filter(
-                  (a) => a.name.toLowerCase().includes('espeto') || a.name.startsWith('Espeto:')
-                );
-                const extraOptions = activeModalProduct.addons.filter(
-                  (a) => !a.name.toLowerCase().includes('espeto') && !a.name.startsWith('Espeto:')
-                );
+                  {/* Addons Selection */}
+                  {activeModalProduct.addons && activeModalProduct.addons.length > 0 && (() => {
+                    const isGenericSingle =
+                      activeModalProduct.addon_selection_mode === 'single' ||
+                      (activeModalProduct.addons && activeModalProduct.addons.some((a) => a.addon_type === 'single')) ||
+                      activeModalProduct.name.toLowerCase().includes('catupiry') ||
+                      activeModalProduct.name.toLowerCase().includes('caipirinha');
 
-                const isGenericSingle =
-                  activeModalProduct.addon_selection_mode === 'single' ||
-                  activeModalProduct.name.toLowerCase().includes('catupiry') ||
-                  activeModalProduct.name.toLowerCase().includes('caipirinha');
+                    const groupTitle =
+                      activeModalProduct.addon_group_title ||
+                      (activeModalProduct.name.toLowerCase().includes('espet')
+                        ? 'Escolha o Tipo de Espeto (1 Incluso):'
+                        : activeModalProduct.name.toLowerCase().includes('caipirinha')
+                        ? 'Escolha o Sabor da Caipirinha (1 Incluso):'
+                        : 'Escolha 1 Opção (Incluso no Valor):');
 
-                if (isGenericSingle && activeModalProduct.addons && activeModalProduct.addons.length > 0) {
-                  const groupTitle =
-                    activeModalProduct.addon_group_title ||
-                    (activeModalProduct.name.toLowerCase().includes('espet')
-                      ? 'Escolha o Tipo de Espeto:'
-                      : activeModalProduct.name.toLowerCase().includes('caipirinha')
-                      ? 'Escolha o Sabor da Caipirinha:'
-                      : 'Escolha a Opção Desejada:');
-
-                  return (
-                    <div className="space-y-3 pt-2 border-t border-gray-800">
-                      <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                              {activeModalProduct.name.toLowerCase().includes('espet') ? (
-                                <span>🍢</span>
-                              ) : (
-                                <span>🍋</span>
-                              )}
+                    if (isGenericSingle) {
+                      return (
+                        <div className="space-y-2 pt-2 border-t border-gray-800">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase tracking-wider">
+                              <span>🔘</span>
                               <span>{groupTitle}</span>
                             </h4>
-                            <p className="text-[11px] text-gray-400 mt-0.5">
-                              Neste valor de {formatBRL(activeModalProduct.price_cents)}, selecione apenas 1 opção inclusa:
+                            <span className="text-[10px] text-amber-400 font-mono font-bold px-2 py-0.5 rounded bg-amber-900/60 border border-amber-700/50">
+                              1 Obrigatório
+                            </span>
+                          </div>
+
+                          {/* Dica explicativa */}
+                          <div className="p-2.5 rounded-xl bg-amber-950/25 border border-amber-800/40 space-y-0.5">
+                            <p className="text-[11px] text-amber-200/90 font-medium">
+                              💡 No valor de {formatBRL(activeModalProduct.price_cents)} está incluso <strong>1 sabor por unidade</strong>.
+                            </p>
+                            <p className="text-[10px] text-gray-400">
+                              Quer sabores diferentes? Ao clicar em Adicionar, você poderá escolher o próximo sabor com 1 clique!
                             </p>
                           </div>
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">
-                            1 Obrigatório
+
+                          <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                            {activeModalProduct.addons.map((add) => {
+                              const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
+                              return (
+                                <div
+                                  key={add.id}
+                                  onClick={() => handleSelectSingleAddon({ name: add.name, price_cents: add.price_cents })}
+                                  className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between text-xs transition ${
+                                    isSelected
+                                      ? 'bg-amber-600 text-white border-amber-500 shadow-md font-bold'
+                                      : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`w-4 h-4 rounded-full flex items-center justify-center border text-[9px] ${
+                                        isSelected ? 'bg-white text-amber-700 border-white font-black' : 'border-gray-500 bg-charcoal-900'
+                                      }`}
+                                    >
+                                      {isSelected ? '●' : ''}
+                                    </div>
+                                    <span>{add.name.replace(/^(Espeto|Sabor):\s*/i, '')}</span>
+                                  </div>
+                                  <span
+                                    className={`font-mono text-xs font-bold ${
+                                      isSelected ? 'text-white' : add.price_cents > 0 ? 'text-amber-400' : 'text-emerald-400'
+                                    }`}
+                                  >
+                                    {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2 pt-2 border-t border-gray-800">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-gray-200 uppercase tracking-wider">
+                            {activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
+                              ? '🍧 Escolha seus Complementos:'
+                              : activeModalProduct.name.toLowerCase().includes('jantinha')
+                              ? '🍽️ Espetos & Acompanhamentos:'
+                              : '✨ Complementos & Opcionais:'}
+                          </h4>
+                          <span className="text-[10px] text-gray-400 font-mono">
+                            {modalSelectedAddons.length} selecionado(s)
                           </span>
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-0.5">
+                        <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
                           {activeModalProduct.addons.map((add) => {
                             const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
                             return (
                               <div
                                 key={add.id}
-                                onClick={() =>
-                                  setModalSelectedAddons([{ name: add.name, price_cents: add.price_cents }])
-                                }
+                                onClick={() => handleToggleAddon({ name: add.name, price_cents: add.price_cents })}
                                 className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between text-xs transition ${
                                   isSelected
-                                    ? 'bg-amber-600 text-white border-amber-500 shadow-md font-bold'
+                                    ? 'bg-ember-600 text-white border-ember-500 shadow-md font-bold'
                                     : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
                                 }`}
                               >
-                                <div className="flex items-center gap-2 truncate">
-                                  <div
-                                    className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
-                                      isSelected
-                                        ? 'border-white bg-white text-amber-700 font-black'
-                                        : 'border-gray-600 bg-charcoal-900'
-                                    }`}
-                                  >
-                                    {isSelected ? '●' : ''}
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-white text-ember-600 border-white' : 'border-gray-600 bg-charcoal-900'}`}>
+                                    {isSelected ? '✓' : ''}
                                   </div>
-                                  <span className="truncate">{add.name.replace(/^(Espeto|Sabor):\s*/i, '')}</span>
+                                  <span>{add.name}</span>
                                 </div>
-                                <span
-                                  className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
-                                    isSelected
-                                      ? 'text-white'
-                                      : add.price_cents > 0
-                                      ? 'text-amber-400'
-                                      : 'text-emerald-400'
-                                  }`}
-                                >
+                                <span className={`font-mono text-xs font-bold ${isSelected ? 'text-white' : add.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'}`}>
                                   {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
                                 </span>
                               </div>
@@ -682,601 +744,111 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                           })}
                         </div>
                       </div>
-                    </div>
-                  );
-                }
+                    );
+                  })()}
 
-                if (isJantinha && espetoOptions.length > 0) {
-                  return (
-                    <div className="space-y-3 pt-2 border-t border-gray-800">
-                      {/* Bloco 1: Escolha do Espetinho Acompanhante (Obrigatório - 1 Opção) */}
-                      <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                              <span>🍢</span>
-                              <span>Escolha o Espetinho que Acompanha o Prato:</span>
-                            </h4>
-                            <p className="text-[11px] text-gray-400 mt-0.5">
-                              Selecione 1 espeto na brasa incluso na sua jantinha:
-                            </p>
-                          </div>
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">
-                            1 Obrigatório
-                          </span>
-                        </div>
+                  {/* Notes */}
+                  <div className="pt-2 border-t border-gray-800 space-y-1.5">
+                    <label className="text-xs font-bold text-gray-300 block">
+                      Alguma observação para o pedido?
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={
+                        activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
+                          ? 'Ex: Leite condensado no fundo, caprichar no ninho...'
+                          : 'Ex: Ao ponto, sem vinagrete, pouco sal...'
+                      }
+                      value={modalNotes}
+                      onChange={(e) => setModalNotes(e.target.value)}
+                      className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
+                    />
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
-                          {espetoOptions.map((add) => {
-                            const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
-                            return (
-                              <div
-                                key={add.id}
-                                onClick={() => handleSelectEspetoAddon({ name: add.name, price_cents: add.price_cents })}
-                                className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between text-xs transition ${
-                                  isSelected
-                                    ? 'bg-amber-600 text-white border-amber-500 shadow-md font-bold'
-                                    : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 truncate">
-                                  <div
-                                    className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
-                                      isSelected
-                                        ? 'border-white bg-white text-amber-700 font-black'
-                                        : 'border-gray-600 bg-charcoal-900'
-                                    }`}
-                                  >
-                                    {isSelected ? '●' : ''}
-                                  </div>
-                                  <span className="truncate">{add.name.replace(/^Espeto:\s*/i, '')}</span>
-                                </div>
-                                <span
-                                  className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
-                                    isSelected
-                                      ? 'text-white'
-                                      : add.price_cents > 0
-                                      ? 'text-amber-400'
-                                      : 'text-emerald-400'
-                                  }`}
-                                >
-                                  {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Bloco 2: Acompanhamentos Extras (Opcionais) */}
-                      {extraOptions.length > 0 && (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold text-gray-200">
-                              ➕ Deseja Acompanhamentos Extras? (Opcional)
-                            </h4>
-                            <span className="text-[10px] text-gray-400 font-mono">
-                              {modalSelectedAddons.filter((a) => !a.name.toLowerCase().includes('espeto') && !a.name.startsWith('Espeto:')).length} selecionado(s)
-                            </span>
-                          </div>
-                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                            {extraOptions.map((add) => {
-                              const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
-                              return (
-                                <div
-                                  key={add.id}
-                                  onClick={() => handleToggleAddon({ name: add.name, price_cents: add.price_cents })}
-                                  className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between text-xs transition ${
-                                    isSelected
-                                      ? 'bg-purple-950/70 border-purple-500 text-white shadow font-semibold'
-                                      : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
-                                        isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-gray-600 bg-charcoal-900'
-                                      }`}
-                                    >
-                                      {isSelected ? '✓' : ''}
-                                    </div>
-                                    <span>{add.name}</span>
-                                  </div>
-                                  <span
-                                    className={`font-mono text-xs font-bold ${
-                                      isSelected ? 'text-amber-300' : add.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'
-                                    }`}
-                                  >
-                                    {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Grátis'}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                const isMilkShake =
-                  activeModalProduct.category_id === 'b7' ||
-                  activeModalProduct.name.toLowerCase().includes('milk');
-
-                const saborOptions = activeModalProduct.addons.filter(
-                  (a) => a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')
-                );
-                const extraMilkShakeOptions = activeModalProduct.addons.filter(
-                  (a) => !a.name.toLowerCase().includes('sabor') && !a.name.startsWith('Sabor:')
-                );
-
-                if (isMilkShake && saborOptions.length > 0) {
-                  return (
-                    <div className="space-y-3 pt-2 border-t border-gray-800">
-                      {/* Bloco 1: Escolha do Sabor (Obrigatório - 1 Opção Inclusa) */}
-                      <div className="p-3 rounded-xl bg-pink-950/30 border border-pink-800/40 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
-                              <span className="text-sm">🥤</span>
-                              <span>Escolha o Sabor do seu Milk-Shake:</span>
-                            </h4>
-                            <p className="text-[11px] text-gray-400 mt-0.5">
-                              Selecione 1 sabor artesanal incluso:
-                            </p>
-                          </div>
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-pink-900/60 text-pink-300 border border-pink-700/50">
-                            1 Obrigatório
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
-                          {saborOptions.map((add) => {
-                            const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
-                            return (
-                              <div
-                                key={add.id}
-                                onClick={() => handleSelectSaborAddon({ name: add.name, price_cents: add.price_cents })}
-                                className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
-                                  isSelected
-                                    ? 'bg-pink-600 text-white border-pink-500 shadow-md shadow-pink-600/30 font-bold'
-                                    : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 truncate">
-                                  <div
-                                    className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
-                                      isSelected
-                                        ? 'border-white bg-white text-pink-700 font-black'
-                                        : 'border-gray-600 bg-charcoal-900'
-                                    }`}
-                                  >
-                                    {isSelected ? '●' : ''}
-                                  </div>
-                                  <span className="truncate">{add.name.replace(/^Sabor:\s*/i, '')}</span>
-                                </div>
-                                <span
-                                  className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
-                                    isSelected
-                                      ? 'text-white'
-                                      : add.price_cents > 0
-                                      ? 'text-amber-400'
-                                      : 'text-emerald-400'
-                                  }`}
-                                >
-                                  {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Bloco 2: Opcionais Extras */}
-                      {extraMilkShakeOptions.length > 0 && (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold text-gray-200">
-                              ➕ Deseja Adicionar Opcionais? (Preço por Item)
-                            </h4>
-                            <span className="text-[10px] text-gray-400 font-mono">
-                              {modalSelectedAddons.filter((a) => !a.name.toLowerCase().includes('sabor') && !a.name.startsWith('Sabor:')).length} selecionado(s)
-                            </span>
-                          </div>
-                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                            {extraMilkShakeOptions.map((add) => {
-                              const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
-                              return (
-                                <div
-                                  key={add.id}
-                                  onClick={() => handleToggleAddon({ name: add.name, price_cents: add.price_cents })}
-                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
-                                    isSelected
-                                      ? 'bg-purple-950/70 border-purple-500 text-white shadow font-semibold'
-                                      : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
-                                        isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-gray-600 bg-charcoal-900'
-                                      }`}
-                                    >
-                                      {isSelected ? '✓' : ''}
-                                    </div>
-                                    <span>{add.name}</span>
-                                  </div>
-                                  <span
-                                    className={`font-mono text-xs font-bold ${
-                                      isSelected ? 'text-amber-300' : add.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'
-                                    }`}
-                                  >
-                                    {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Grátis'}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                const isDrink =
-                  activeModalProduct.category_id === 'b8' ||
-                  activeModalProduct.name.toLowerCase().includes('copão') ||
-                  activeModalProduct.name.toLowerCase().includes('copao') ||
-                  activeModalProduct.name.toLowerCase().includes('drink') ||
-                  activeModalProduct.name.toLowerCase().includes('alcoólico');
-
-                const destiladoOptions = activeModalProduct.addons.filter(
-                  (a) =>
-                    a.name.toLowerCase().includes('destilado') ||
-                    a.name.startsWith('Destilado:') ||
-                    a.name.toLowerCase().includes('bebida') ||
-                    a.name.startsWith('Bebida:')
-                );
-
-                const drinkSaborOptions = activeModalProduct.addons.filter(
-                  (a) => a.name.toLowerCase().includes('sabor') || a.name.startsWith('Sabor:')
-                );
-
-                const extraDrinkOptions = activeModalProduct.addons.filter(
-                  (a) =>
-                    !a.name.toLowerCase().includes('destilado') &&
-                    !a.name.startsWith('Destilado:') &&
-                    !a.name.toLowerCase().includes('bebida') &&
-                    !a.name.startsWith('Bebida:') &&
-                    !a.name.toLowerCase().includes('sabor') &&
-                    !a.name.startsWith('Sabor:')
-                );
-
-                if (isDrink && (destiladoOptions.length > 0 || drinkSaborOptions.length > 0 || extraDrinkOptions.length > 0)) {
-                  return (
-                    <div className="space-y-3 pt-2 border-t border-gray-800">
-                      {/* Bloco 1: Escolha do Destilado / Bebida Base */}
-                      {destiladoOptions.length > 0 && (
-                        <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                                <span className="text-sm">🥃</span>
-                                <span>Escolha a Bebida Base / Destilado:</span>
-                              </h4>
-                              <p className="text-[11px] text-gray-400 mt-0.5">
-                                Selecione 1 destilado para o seu Copão ou Drink:
-                              </p>
-                            </div>
-                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">
-                              1 Obrigatório
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {destiladoOptions.map((add) => {
-                              const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
-                              return (
-                                <div
-                                  key={add.id}
-                                  onClick={() => handleSelectDestiladoAddon({ name: add.name, price_cents: add.price_cents })}
-                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
-                                    isSelected
-                                      ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-600/30 font-bold'
-                                      : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 truncate">
-                                    <div
-                                      className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
-                                        isSelected
-                                          ? 'border-white bg-white text-amber-700 font-black'
-                                          : 'border-gray-600 bg-charcoal-900'
-                                      }`}
-                                    >
-                                      {isSelected ? '●' : ''}
-                                    </div>
-                                    <span className="truncate">{add.name.replace(/^(Destilado|Bebida):\s*/i, '')}</span>
-                                  </div>
-                                  <span
-                                    className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
-                                      isSelected
-                                        ? 'text-white'
-                                        : add.price_cents > 0
-                                        ? 'text-amber-400'
-                                        : 'text-emerald-400'
-                                    }`}
-                                  >
-                                    {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Bloco 2: Se for Milkshake Alcoólico, Seleção do Sabor */}
-                      {drinkSaborOptions.length > 0 && (
-                        <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-800/40 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                                <span className="text-sm">🥤</span>
-                                <span>Escolha o Sabor do Milkshake:</span>
-                              </h4>
-                              <p className="text-[11px] text-gray-400 mt-0.5">
-                                Selecione 1 sabor artesanal incluso:
-                              </p>
-                            </div>
-                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700/50">
-                              1 Incluso
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-0.5">
-                            {drinkSaborOptions.map((add) => {
-                              const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
-                              return (
-                                <div
-                                  key={add.id}
-                                  onClick={() => handleSelectSaborAddon({ name: add.name, price_cents: add.price_cents })}
-                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
-                                    isSelected
-                                      ? 'bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-600/30 font-bold'
-                                      : 'bg-charcoal-800 text-gray-300 border-gray-700 hover:border-gray-600'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 truncate">
-                                    <div
-                                      className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
-                                        isSelected
-                                          ? 'border-white bg-white text-purple-700 font-black'
-                                          : 'border-gray-600 bg-charcoal-900'
-                                      }`}
-                                    >
-                                      {isSelected ? '●' : ''}
-                                    </div>
-                                    <span className="truncate">{add.name.replace(/^Sabor:\s*/i, '')}</span>
-                                  </div>
-                                  <span
-                                    className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
-                                      isSelected
-                                        ? 'text-white'
-                                        : add.price_cents > 0
-                                        ? 'text-amber-400'
-                                        : 'text-emerald-400'
-                                    }`}
-                                  >
-                                    {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Bloco 3: Opcionais do Drink (Roseta de Limão e Sal, Gelo de Coco, etc.) */}
-                      {extraDrinkOptions.length > 0 && (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold text-gray-200 flex items-center gap-1.5">
-                              <span>🍋</span>
-                              <span>Adicionais & Opcionais para seu Drink:</span>
-                            </h4>
-                            <span className="text-[10px] text-gray-400 font-mono">
-                              {modalSelectedAddons.filter((a) => !destiladoOptions.some((d) => d.name === a.name) && !drinkSaborOptions.some((s) => s.name === a.name)).length} selecionado(s)
-                            </span>
-                          </div>
-                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                            {extraDrinkOptions.map((add) => {
-                              const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
-                              return (
-                                <div
-                                  key={add.id}
-                                  onClick={() => handleToggleAddon({ name: add.name, price_cents: add.price_cents })}
-                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
-                                    isSelected
-                                      ? 'bg-amber-950/70 border-amber-500 text-white shadow font-semibold'
-                                      : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
-                                        isSelected ? 'bg-amber-500 border-amber-400 text-white' : 'border-gray-600 bg-charcoal-900'
-                                      }`}
-                                    >
-                                      {isSelected ? '✓' : ''}
-                                    </div>
-                                    <span>{add.name}</span>
-                                  </div>
-                                  <span
-                                    className={`font-mono text-xs font-bold ${
-                                      isSelected ? 'text-amber-300' : add.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'
-                                    }`}
-                                  >
-                                    {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Grátis'}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="space-y-2 pt-2 border-t border-gray-800">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-gray-200 uppercase tracking-wider">
-                        {activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
-                          ? '🍧 Escolha seus Complementos:'
-                          : '✨ Complementos & Opcionais:'}
-                      </h4>
-                      <span className="text-[10px] text-gray-400 font-mono">
-                        {modalSelectedAddons.length} selecionado(s)
-                      </span>
-                    </div>
-                    <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                      {activeModalProduct.addons.map((add) => {
-                        const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
-                        return (
-                          <div
-                            key={add.id}
-                            onClick={() => handleToggleAddon({ name: add.name, price_cents: add.price_cents })}
-                            className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between text-xs transition ${
-                              isSelected
-                                ? 'bg-ember-600 text-white border-ember-500 shadow-md font-bold'
-                                : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
-                            }`}
+                    {/* Atalhos de observações */}
+                    <div className="flex flex-wrap gap-1">
+                      {(activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')) ? (
+                        ['Sem banana', 'Ninho no fundo', 'Caprichar na calda', 'Pouco doce'].map((sug) => (
+                          <button
+                            key={sug}
+                            type="button"
+                            onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                            className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-ember-500 text-gray-300 hover:text-white transition"
                           >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] ${
-                                  isSelected ? 'bg-white text-ember-600 border-white' : 'border-gray-600 bg-charcoal-900'
-                                }`}
-                              >
-                                {isSelected ? '✓' : ''}
-                              </div>
-                              <span>{add.name}</span>
-                            </div>
-                            <span
-                              className={`font-mono text-xs font-bold ${
-                                isSelected ? 'text-white' : add.price_cents > 0 ? 'text-amber-400' : 'text-gray-400'
-                              }`}
-                            >
-                              {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
-                            </span>
-                          </div>
-                        );
-                      })}
+                            +{sug}
+                          </button>
+                        ))
+                      ) : (
+                        ['Ao ponto', 'Bem passado', 'Pouco sal', 'Sem vinagrete', 'Sem farofa'].map((sug) => (
+                          <button
+                            key={sug}
+                            type="button"
+                            onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
+                            className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-ember-500 text-gray-300 hover:text-white transition"
+                          >
+                            +{sug}
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
-                );
-              })()}
 
-              {/* Notes */}
-              <div className="pt-2 border-t border-gray-800 space-y-1.5">
-                <label className="text-xs font-bold text-gray-300 block">
-                  Alguma observação para o pedido?
-                </label>
-                <input
-                  type="text"
-                  placeholder={
-                    activeModalProduct.name.toLowerCase().includes('milk')
-                      ? 'Ex: Caprichar no chantilly, calda na borda, bem geladinho...'
-                      : activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')
-                      ? 'Ex: Leite condensado no fundo, caprichar no ninho...'
-                      : 'Ex: Ao ponto, sem vinagrete, pouco sal...'
-                  }
-                  value={modalNotes}
-                  onChange={(e) => setModalNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500"
-                />
-
-                {/* Atalhos de observações */}
-                <div className="flex flex-wrap gap-1">
-                  {activeModalProduct.name.toLowerCase().includes('milk') ? (
-                    ['Calda na borda', 'Caprichar no chantilly', 'Sem canudo plástico', 'Bem geladinho'].map((sug) => (
+                  {/* Quantity */}
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-800">
+                    <div className="space-y-0.5 pr-2">
+                      <span className="text-xs font-bold text-gray-300">Quantidade:</span>
+                      {activeModalProduct.addon_selection_mode === 'single' ||
+                      activeModalProduct.name.toLowerCase().includes('catupiry') ||
+                      activeModalProduct.name.toLowerCase().includes('caipirinha') ? (
+                        <p className="text-[10px] text-amber-400/90 leading-tight">
+                          {modalQuantity === 1
+                            ? 'Dica: para sabores variados, adicione 1 por vez!'
+                            : `⚠️ ${modalQuantity} unidades com o MESMO sabor (${modalSelectedAddons[0]?.name.replace(/^(Espeto|Sabor):\s*/i, '') || 'selecionado'}).`}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-2 bg-charcoal-800 border border-gray-700 rounded-lg p-1">
                       <button
-                        key={sug}
                         type="button"
-                        onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
-                        className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-pink-500 text-gray-300 hover:text-white transition"
+                        onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
+                        className="p-1 rounded text-gray-300 hover:text-white"
                       >
-                        +{sug}
+                        <Minus className="w-4 h-4" />
                       </button>
-                    ))
-                  ) : (activeModalProduct.name.toLowerCase().includes('açaí') || activeModalProduct.name.toLowerCase().includes('acai')) ? (
-                    ['Sem banana', 'Ninho no fundo', 'Caprichar na calda', 'Pouco doce'].map((sug) => (
+                      <span className="font-mono font-bold text-white px-2 text-sm">{modalQuantity}</span>
                       <button
-                        key={sug}
                         type="button"
-                        onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
-                        className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-ember-500 text-gray-300 hover:text-white transition"
+                        onClick={() => setModalQuantity(modalQuantity + 1)}
+                        className="p-1 rounded text-gray-300 hover:text-white"
                       >
-                        +{sug}
+                        <Plus className="w-4 h-4" />
                       </button>
-                    ))
-                  ) : (
-                    ['Ao ponto', 'Bem passado', 'Pouco sal', 'Sem vinagrete', 'Sem farofa'].map((sug) => (
-                      <button
-                        key={sug}
-                        type="button"
-                        onClick={() => setModalNotes((prev) => prev ? `${prev}, ${sug}` : sug)}
-                        className="text-[10px] px-2 py-0.5 rounded bg-charcoal-800 border border-gray-700 hover:border-ember-500 text-gray-300 hover:text-white transition"
-                      >
-                        +{sug}
-                      </button>
-                    ))
-                  )}
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Quantity */}
-              <div className="flex items-center justify-between pt-2 border-t border-gray-800">
-                <span className="text-xs font-bold text-gray-300">Quantidade:</span>
-                <div className="flex items-center gap-2 bg-charcoal-800 border border-gray-700 rounded-lg p-1">
+                {/* Modal Bottom Button */}
+                <div className="p-4 bg-charcoal-850 border-t border-gray-800">
                   <button
                     type="button"
-                    onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
-                    className="p-1 rounded text-gray-300 hover:text-white"
+                    onClick={handleAddToCartFromModal}
+                    className="w-full py-3 px-4 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-extrabold text-sm shadow-lg shadow-ember-600/30 flex items-center justify-between transition"
                   >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="font-mono font-bold text-white px-2 text-sm">{modalQuantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => setModalQuantity(modalQuantity + 1)}
-                    className="p-1 rounded text-gray-300 hover:text-white"
-                  >
-                    <Plus className="w-4 h-4" />
+                    <span>
+                      {flavorStepCount > 1
+                        ? `Adicionar ${flavorStepCount}º Item à Sacola`
+                        : 'Adicionar à Sacola'}
+                    </span>
+                    <span className="font-mono">
+                      {formatBRL(
+                        (activeModalProduct.price_cents +
+                          modalSelectedAddons.reduce((acc, a) => acc + a.price_cents, 0)) *
+                          modalQuantity
+                      )}
+                    </span>
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* Modal Bottom Button */}
-            <div className="p-4 bg-charcoal-850 border-t border-gray-800">
-              <button
-                type="button"
-                onClick={handleAddToCartFromModal}
-                className="w-full py-3 px-4 rounded-xl bg-ember-600 hover:bg-ember-500 text-white font-extrabold text-sm shadow-lg shadow-ember-600/30 flex items-center justify-between transition"
-              >
-                <span>Adicionar à Sacola</span>
-                <span className="font-mono">
-                  {formatBRL(
-                    (activeModalProduct.price_cents +
-                      modalSelectedAddons.reduce((acc, a) => acc + a.price_cents, 0)) *
-                      modalQuantity
-                  )}
-                </span>
-              </button>
-            </div>
+              </>
+            )}
           </div>
         </div>
       )}
