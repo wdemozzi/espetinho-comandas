@@ -99,7 +99,18 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       product.name.toLowerCase().includes('drink') ||
       product.name.toLowerCase().includes('alcoólico');
 
-    if (isJantinha && product.addons && product.addons.length > 0) {
+    const isSingleChoice =
+      product.addon_selection_mode === 'single' ||
+      product.name.toLowerCase().includes('catupiry') ||
+      product.name.toLowerCase().includes('caipirinha');
+
+    if (isSingleChoice && product.addons && product.addons.length > 0) {
+      const defaultOpt =
+        product.addons.find((a) => a.price_cents === 0) || product.addons[0];
+      setModalSelectedAddons(
+        defaultOpt ? [{ name: defaultOpt.name, price_cents: defaultOpt.price_cents }] : []
+      );
+    } else if (isJantinha && product.addons && product.addons.length > 0) {
       const defaultEspeto =
         product.addons.find(
           (a) =>
@@ -578,6 +589,89 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                 const extraOptions = activeModalProduct.addons.filter(
                   (a) => !a.name.toLowerCase().includes('espeto') && !a.name.startsWith('Espeto:')
                 );
+
+                const isGenericSingle =
+                  activeModalProduct.addon_selection_mode === 'single' ||
+                  activeModalProduct.name.toLowerCase().includes('catupiry') ||
+                  activeModalProduct.name.toLowerCase().includes('caipirinha');
+
+                if (isGenericSingle && activeModalProduct.addons && activeModalProduct.addons.length > 0) {
+                  const groupTitle =
+                    activeModalProduct.addon_group_title ||
+                    (activeModalProduct.name.toLowerCase().includes('espet')
+                      ? 'Escolha o Tipo de Espeto:'
+                      : activeModalProduct.name.toLowerCase().includes('caipirinha')
+                      ? 'Escolha o Sabor da Caipirinha:'
+                      : 'Escolha a Opção Desejada:');
+
+                  return (
+                    <div className="space-y-3 pt-2 border-t border-gray-800">
+                      <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                              {activeModalProduct.name.toLowerCase().includes('espet') ? (
+                                <span>🍢</span>
+                              ) : (
+                                <span>🍋</span>
+                              )}
+                              <span>{groupTitle}</span>
+                            </h4>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              Neste valor de {formatBRL(activeModalProduct.price_cents)}, selecione apenas 1 opção inclusa:
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">
+                            1 Obrigatório
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-0.5">
+                          {activeModalProduct.addons.map((add) => {
+                            const isSelected = modalSelectedAddons.some((a) => a.name === add.name);
+                            return (
+                              <div
+                                key={add.id}
+                                onClick={() =>
+                                  setModalSelectedAddons([{ name: add.name, price_cents: add.price_cents }])
+                                }
+                                className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between text-xs transition ${
+                                  isSelected
+                                    ? 'bg-amber-600 text-white border-amber-500 shadow-md font-bold'
+                                    : 'bg-charcoal-800 border-gray-700 text-gray-300 hover:border-gray-600'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <div
+                                    className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] flex-shrink-0 ${
+                                      isSelected
+                                        ? 'border-white bg-white text-amber-700 font-black'
+                                        : 'border-gray-600 bg-charcoal-900'
+                                    }`}
+                                  >
+                                    {isSelected ? '●' : ''}
+                                  </div>
+                                  <span className="truncate">{add.name.replace(/^(Espeto|Sabor):\s*/i, '')}</span>
+                                </div>
+                                <span
+                                  className={`font-mono text-xs font-bold flex-shrink-0 ml-1.5 ${
+                                    isSelected
+                                      ? 'text-white'
+                                      : add.price_cents > 0
+                                      ? 'text-amber-400'
+                                      : 'text-emerald-400'
+                                  }`}
+                                >
+                                  {add.price_cents > 0 ? `+${formatBRL(add.price_cents)}` : 'Incluso'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
 
                 if (isJantinha && espetoOptions.length > 0) {
                   return (

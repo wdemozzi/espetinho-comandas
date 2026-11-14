@@ -56,6 +56,7 @@ export interface ProductAddon {
   price_cents: number;
   is_available: boolean;
   sort_order: number;
+  addon_type?: 'single' | 'multiple'; // 'single' = 1 opção obrigatória (radio), 'multiple' = opcional livre (checkbox)
 }
 
 export interface Product {
@@ -75,6 +76,8 @@ export interface Product {
   stock_quantity?: number;
   track_stock?: boolean;
   min_stock_alert?: number;
+  addon_selection_mode?: 'single' | 'multiple' | 'hybrid'; // 'single' = cliente escolhe 1 opção inclusa; 'multiple' = livre; 'hybrid' = 1 sabor + extras
+  addon_group_title?: string; // Título exibido (Ex: "Escolha o Espeto", "Escolha o Sabor")
 }
 
 export interface RestaurantTable {
