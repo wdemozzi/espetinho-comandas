@@ -1455,6 +1455,25 @@ class DatabaseStore {
   }
 
   /**
+   * Atualiza ou vincula os dados de identificação do cliente (Nome e Telefone/WhatsApp) à comanda.
+   */
+  public updateTabCustomer(tabId: string, customerName?: string | null, customerPhone?: string | null): Tab {
+    const tab = this.tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada');
+    if (customerName !== undefined) {
+      tab.customer_name = customerName ? customerName.trim() : null;
+    }
+    if (customerPhone !== undefined) {
+      tab.customer_phone = customerPhone ? customerPhone.trim() : null;
+    }
+    this.persist();
+    this.notify();
+    supabaseSync.broadcastTab(tab);
+    supabaseSync.saveToCloud('tabs', this.tabs);
+    return tab;
+  }
+
+  /**
    * Transfere uma comanda ativa de uma mesa para outra mesa livre.
    * Atualiza a mesa de origem para 'livre', a nova mesa para 'ocupada',
    * atualiza a referência na comanda e o table_number de todos os pedidos ativos.
@@ -1866,6 +1885,12 @@ class DatabaseStore {
         if (!targetTab.orders) targetTab.orders = [];
         targetTab.orders.push(newOrder);
         targetTab.total_cents += orderTotalCents;
+        if (!targetTab.customer_name && params.customer_name) {
+          targetTab.customer_name = params.customer_name;
+        }
+        if (!targetTab.customer_phone && params.customer_phone) {
+          targetTab.customer_phone = params.customer_phone;
+        }
       }
     }
 
