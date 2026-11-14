@@ -113,7 +113,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       product.addon_selection_mode === 'single' ||
       (product.addons && product.addons.some((a) => a.addon_type === 'single')) ||
       product.name.toLowerCase().includes('catupiry') ||
-      product.name.toLowerCase().includes('caipirinha');
+      product.name.toLowerCase().includes('caipirin') ||
+      product.name.toLowerCase().includes('caipira') ||
+      product.name.toLowerCase().includes('sabor') ||
+      (product.addon_selection_mode !== 'multiple' &&
+        Boolean(product.addons && product.addons.length >= 2 && product.addons.every((a) => a.price_cents === 0)));
 
     if (isGenericSingle && product.addons && product.addons.length > 0) {
       const defaultOption =
@@ -147,7 +151,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       activeModalProduct.addon_selection_mode === 'single' ||
       (activeModalProduct.addons && activeModalProduct.addons.some((a) => a.addon_type === 'single')) ||
       activeModalProduct.name.toLowerCase().includes('catupiry') ||
-      activeModalProduct.name.toLowerCase().includes('caipirinha');
+      activeModalProduct.name.toLowerCase().includes('caipirin') ||
+      activeModalProduct.name.toLowerCase().includes('caipira') ||
+      activeModalProduct.name.toLowerCase().includes('sabor') ||
+      (activeModalProduct.addon_selection_mode !== 'multiple' &&
+        Boolean(activeModalProduct.addons && activeModalProduct.addons.length >= 2 && activeModalProduct.addons.every((a) => a.price_cents === 0)));
 
     const selectedFlavor = modalSelectedAddons[0]?.name.replace(/^(Espeto|Sabor):\s*/i, '') || 'Opção selecionada';
     const currentProduct = activeModalProduct;
@@ -594,6 +602,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="sticky top-16 sm:top-20 z-30 bg-[#0c0a17]/95 backdrop-blur-md border-y border-gray-800 py-2.5 mb-6">
             <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 px-2">
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                {/* Aba de Promoções */}
+                {products.some((p) => p.is_promo && p.is_available) && (
+                  <button
+                    onClick={() => setSelectedCategory('promos')}
+                    className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-black whitespace-nowrap transition flex items-center gap-1.5 ${
+                      selectedCategory === 'promos'
+                        ? 'bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white shadow-lg shadow-orange-600/40 ring-2 ring-yellow-400 animate-pulse'
+                        : 'bg-red-950/60 text-orange-300 border border-red-700/60 hover:bg-red-900/60'
+                    }`}
+                  >
+                    <span>🔥</span>
+                    <span>Ofertas CT</span>
+                    <span className="ml-1 px-1.5 py-0.2 bg-red-600 text-[10px] text-white rounded-full">
+                      {products.filter((p) => p.is_promo && p.is_available).length}
+                    </span>
+                  </button>
+                )}
+
                 {categories.map((cat: Category) => (
                   <button
                     key={cat.id}
@@ -643,15 +669,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {menuViewMode === 'compact' ? (
             <div className="max-w-5xl mx-auto space-y-2.5 sm:space-y-3">
               {products
-                .filter((p) => p.category_id === selectedCategory)
+                .filter((p) => (selectedCategory === 'promos' ? p.is_promo : p.category_id === selectedCategory) && p.is_available)
                 .map((product) => (
                   <div
                     key={product.id}
                     onClick={() => openProductModal(product)}
-                    className="p-3 sm:p-4 rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition cursor-pointer flex items-center justify-between gap-3 shadow-md group"
+                    className={`p-3 sm:p-4 rounded-2xl bg-charcoal-850 border transition cursor-pointer flex items-center justify-between gap-3 shadow-md group ${
+                      product.is_promo
+                        ? 'border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:border-amber-400'
+                        : 'border-gray-800 hover:border-purple-500/50'
+                    }`}
                   >
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        {product.is_promo && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-sm shadow-red-600/30 border border-yellow-300/40 animate-pulse">
+                            {product.promo_tag || '🔥 OFERTA'}
+                          </span>
+                        )}
                         <SectorBadge sector={product.sector} />
                       </div>
                       <h4 className="font-bold text-white text-sm sm:text-base group-hover:text-purple-300 transition truncate">
@@ -660,10 +695,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <p className="text-[11px] text-gray-400 line-clamp-2 leading-snug">
                         {product.description}
                       </p>
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="font-mono text-sm sm:text-base font-extrabold text-amber-400">
-                          {formatBRL(product.price_cents)}
-                        </span>
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                        {product.is_promo && product.original_price_cents && product.original_price_cents > product.price_cents ? (
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-xs text-gray-400 line-through font-mono">
+                              {formatBRL(product.original_price_cents)}
+                            </span>
+                            <span className="font-mono text-sm sm:text-base font-extrabold text-amber-400">
+                              {formatBRL(product.price_cents)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-mono text-sm sm:text-base font-extrabold text-amber-400">
+                            {formatBRL(product.price_cents)}
+                          </span>
+                        )}
                         <span className="text-[10px] text-purple-300 font-bold bg-purple-950/80 px-2 py-0.5 rounded-lg border border-purple-700/60 flex items-center gap-0.5">
                           <Plus className="w-3 h-3" />
                           <span>Adicionar</span>
@@ -686,12 +732,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           ) : (
             <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {products
-                .filter((p) => p.category_id === selectedCategory)
+                .filter((p) => (selectedCategory === 'promos' ? p.is_promo : p.category_id === selectedCategory) && p.is_available)
                 .map((product) => (
                   <div
                     key={product.id}
                     onClick={() => openProductModal(product)}
-                    className="rounded-2xl bg-charcoal-850 border border-gray-800 hover:border-purple-500/50 transition cursor-pointer overflow-hidden flex flex-col justify-between group shadow-lg"
+                    className={`rounded-2xl bg-charcoal-850 border transition cursor-pointer overflow-hidden flex flex-col justify-between group shadow-lg ${
+                      product.is_promo
+                        ? 'border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:border-amber-400'
+                        : 'border-gray-800 hover:border-purple-500/50'
+                    }`}
                   >
                     {product.image_url && (
                       <div className="relative h-44 overflow-hidden bg-charcoal-900">
@@ -700,7 +750,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           alt={product.name}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
-                        <div className="absolute top-3 right-3">
+                        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                          {product.is_promo && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-md shadow-red-600/30 border border-yellow-300/40 animate-pulse">
+                              {product.promo_tag || '🔥 OFERTA'}
+                            </span>
+                          )}
                           <SectorBadge sector={product.sector} />
                         </div>
                       </div>
@@ -708,6 +763,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                     <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                       <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {!product.image_url && product.is_promo && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-sm border border-yellow-300/40 animate-pulse">
+                              {product.promo_tag || '🔥 OFERTA'}
+                            </span>
+                          )}
+                          {!product.image_url && <SectorBadge sector={product.sector} />}
+                        </div>
                         <h4 className="font-bold text-white text-base group-hover:text-purple-300 transition">
                           {product.name}
                         </h4>
@@ -717,9 +780,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-gray-800/80">
-                        <span className="font-mono text-base font-extrabold text-amber-400">
-                          {formatBRL(product.price_cents)}
-                        </span>
+                        {product.is_promo && product.original_price_cents && product.original_price_cents > product.price_cents ? (
+                          <div className="flex flex-col">
+                            <span className="text-[11px] text-gray-400 line-through font-mono">
+                              {formatBRL(product.original_price_cents)}
+                            </span>
+                            <span className="font-mono text-base font-extrabold text-amber-400">
+                              {formatBRL(product.price_cents)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-mono text-base font-extrabold text-amber-400">
+                            {formatBRL(product.price_cents)}
+                          </span>
+                        )}
 
                         <button
                           type="button"
@@ -1186,10 +1260,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                   <div className="flex items-start justify-between gap-3">
                     <div>
+                      {activeModalProduct.is_promo && (
+                        <div className="mb-1.5">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-md shadow-red-600/30 border border-yellow-300/40 animate-pulse">
+                            {activeModalProduct.promo_tag || '🔥 OFERTA ESPECIAL'}
+                          </span>
+                        </div>
+                      )}
                       <h3 className="font-extrabold text-lg text-white">{activeModalProduct.name}</h3>
                       <p className="text-xs text-gray-400 mt-0.5">{activeModalProduct.description}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
+                      {activeModalProduct.is_promo && activeModalProduct.original_price_cents && activeModalProduct.original_price_cents > activeModalProduct.price_cents && (
+                        <p className="text-xs text-gray-400 line-through font-mono">
+                          {formatBRL(activeModalProduct.original_price_cents * modalQuantity)}
+                        </p>
+                      )}
                       <span className="font-mono text-base font-extrabold text-amber-400">
                         {formatBRL(
                           (activeModalProduct.price_cents + modalSelectedAddons.reduce((sum, a) => sum + a.price_cents, 0)) * modalQuantity
@@ -1209,13 +1295,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       activeModalProduct.addon_selection_mode === 'single' ||
                       (activeModalProduct.addons && activeModalProduct.addons.some((a) => a.addon_type === 'single')) ||
                       activeModalProduct.name.toLowerCase().includes('catupiry') ||
-                      activeModalProduct.name.toLowerCase().includes('caipirinha');
+                      activeModalProduct.name.toLowerCase().includes('caipirin') ||
+                      activeModalProduct.name.toLowerCase().includes('caipira') ||
+                      activeModalProduct.name.toLowerCase().includes('sabor') ||
+                      (activeModalProduct.addon_selection_mode !== 'multiple' &&
+                        Boolean(activeModalProduct.addons && activeModalProduct.addons.length >= 2 && activeModalProduct.addons.every((a) => a.price_cents === 0)));
 
                     const groupTitle =
                       activeModalProduct.addon_group_title ||
                       (activeModalProduct.name.toLowerCase().includes('espet')
                         ? 'Escolha o Tipo de Espeto (1 Incluso):'
-                        : activeModalProduct.name.toLowerCase().includes('caipirinha')
+                        : activeModalProduct.name.toLowerCase().includes('caipirin') || activeModalProduct.name.toLowerCase().includes('caipira')
                         ? 'Escolha o Sabor da Caipirinha (1 Incluso):'
                         : 'Escolha 1 Opção (Incluso no Valor):');
 

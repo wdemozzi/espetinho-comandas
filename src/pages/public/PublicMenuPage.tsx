@@ -99,7 +99,11 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       product.addon_selection_mode === 'single' ||
       (product.addons && product.addons.some((a) => a.addon_type === 'single')) ||
       product.name.toLowerCase().includes('catupiry') ||
-      product.name.toLowerCase().includes('caipirinha');
+      product.name.toLowerCase().includes('caipirin') ||
+      product.name.toLowerCase().includes('caipira') ||
+      product.name.toLowerCase().includes('sabor') ||
+      (product.addon_selection_mode !== 'multiple' &&
+        Boolean(product.addons && product.addons.length >= 2 && product.addons.every((a) => a.price_cents === 0)));
 
     if (isGenericSingle && product.addons && product.addons.length > 0) {
       const defaultOption =
@@ -129,7 +133,11 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       activeModalProduct.addon_selection_mode === 'single' ||
       (activeModalProduct.addons && activeModalProduct.addons.some((a) => a.addon_type === 'single')) ||
       activeModalProduct.name.toLowerCase().includes('catupiry') ||
-      activeModalProduct.name.toLowerCase().includes('caipirinha');
+      activeModalProduct.name.toLowerCase().includes('caipirin') ||
+      activeModalProduct.name.toLowerCase().includes('caipira') ||
+      activeModalProduct.name.toLowerCase().includes('sabor') ||
+      (activeModalProduct.addon_selection_mode !== 'multiple' &&
+        Boolean(activeModalProduct.addons && activeModalProduct.addons.length >= 2 && activeModalProduct.addons.every((a) => a.price_cents === 0)));
 
     const selectedFlavor = modalSelectedAddons[0]?.name.replace(/^(Espeto|Sabor):\s*/i, '') || 'Opção selecionada';
     const currentProduct = activeModalProduct;
@@ -401,6 +409,24 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       {/* Categories Sticky Bar */}
       <div className="sticky top-0 z-30 bg-[#0c0a17]/95 backdrop-blur border-b border-gray-800 py-3 px-4">
         <div className="max-w-4xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {/* Aba de Promoções em destaque */}
+          {products.some((p) => p.is_promo && p.is_available) && (
+            <button
+              onClick={() => setSelectedCategory('promos')}
+              className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition flex items-center gap-1.5 ${
+                selectedCategory === 'promos'
+                  ? 'bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white shadow-lg shadow-orange-600/40 ring-2 ring-yellow-400 animate-pulse'
+                  : 'bg-red-950/60 text-orange-300 border border-red-700/60 hover:bg-red-900/60'
+              }`}
+            >
+              <span>🔥</span>
+              <span>Ofertas CT</span>
+              <span className="ml-1 px-1.5 py-0.2 bg-red-600 text-[10px] text-white rounded-full">
+                {products.filter((p) => p.is_promo && p.is_available).length}
+              </span>
+            </button>
+          )}
+
           {categories.map((cat: Category) => (
             <button
               key={cat.id}
@@ -421,15 +447,24 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {products
-            .filter((p) => p.category_id === selectedCategory && p.is_available)
+            .filter((p) => (selectedCategory === 'promos' ? p.is_promo : p.category_id === selectedCategory) && p.is_available)
             .map((product) => (
               <div
                 key={product.id}
                 onClick={() => openProductModal(product)}
-                className="group p-4 rounded-2xl bg-charcoal-850/80 border border-gray-800 hover:border-ember-500/50 transition cursor-pointer flex gap-4 items-center justify-between"
+                className={`group p-4 rounded-2xl bg-charcoal-850/80 border transition cursor-pointer flex gap-4 items-center justify-between ${
+                  product.is_promo
+                    ? 'border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:border-amber-400 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]'
+                    : 'border-gray-800 hover:border-ember-500/50'
+                }`}
               >
                 <div className="space-y-1.5 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {product.is_promo && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-md shadow-red-600/30 border border-yellow-300/40 animate-pulse">
+                        {product.promo_tag || '🔥 OFERTA'}
+                      </span>
+                    )}
                     <h3 className="font-bold text-sm text-white group-hover:text-ember-400 transition">
                       {product.name}
                     </h3>
@@ -437,10 +472,21 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                   <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
                     {product.description}
                   </p>
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="font-mono font-black text-ember-400 text-sm">
-                      {formatBRL(product.price_cents)}
-                    </span>
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    {product.is_promo && product.original_price_cents && product.original_price_cents > product.price_cents ? (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[11px] text-gray-400 line-through font-mono">
+                          {formatBRL(product.original_price_cents)}
+                        </span>
+                        <span className="font-mono font-black text-amber-400 text-sm">
+                          {formatBRL(product.price_cents)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-mono font-black text-ember-400 text-sm">
+                        {formatBRL(product.price_cents)}
+                      </span>
+                    )}
                     <SectorBadge sector={product.sector} />
                   </div>
                 </div>
@@ -609,11 +655,23 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
 
                   <div className="flex items-start justify-between gap-3">
                     <div>
+                      {activeModalProduct.is_promo && (
+                        <div className="mb-1.5">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-md shadow-red-600/30 border border-yellow-300/40 animate-pulse">
+                            {activeModalProduct.promo_tag || '🔥 OFERTA ESPECIAL'}
+                          </span>
+                        </div>
+                      )}
                       <h3 className="text-lg font-extrabold text-white">{activeModalProduct.name}</h3>
                       <p className="text-xs text-gray-400 mt-1">{activeModalProduct.description}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-mono font-black text-ember-400 text-lg">
+                      {activeModalProduct.is_promo && activeModalProduct.original_price_cents && activeModalProduct.original_price_cents > activeModalProduct.price_cents && (
+                        <p className="text-xs text-gray-400 line-through font-mono">
+                          {formatBRL(activeModalProduct.original_price_cents * modalQuantity)}
+                        </p>
+                      )}
+                      <p className="font-mono font-black text-amber-400 text-lg">
                         {formatBRL(
                           (activeModalProduct.price_cents + modalSelectedAddons.reduce((sum, a) => sum + a.price_cents, 0)) * modalQuantity
                         )}
@@ -632,13 +690,17 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                       activeModalProduct.addon_selection_mode === 'single' ||
                       (activeModalProduct.addons && activeModalProduct.addons.some((a) => a.addon_type === 'single')) ||
                       activeModalProduct.name.toLowerCase().includes('catupiry') ||
-                      activeModalProduct.name.toLowerCase().includes('caipirinha');
+                      activeModalProduct.name.toLowerCase().includes('caipirin') ||
+                      activeModalProduct.name.toLowerCase().includes('caipira') ||
+                      activeModalProduct.name.toLowerCase().includes('sabor') ||
+                      (activeModalProduct.addon_selection_mode !== 'multiple' &&
+                        Boolean(activeModalProduct.addons && activeModalProduct.addons.length >= 2 && activeModalProduct.addons.every((a) => a.price_cents === 0)));
 
                     const groupTitle =
                       activeModalProduct.addon_group_title ||
                       (activeModalProduct.name.toLowerCase().includes('espet')
                         ? 'Escolha o Tipo de Espeto (1 Incluso):'
-                        : activeModalProduct.name.toLowerCase().includes('caipirinha')
+                        : activeModalProduct.name.toLowerCase().includes('caipirin') || activeModalProduct.name.toLowerCase().includes('caipira')
                         ? 'Escolha o Sabor da Caipirinha (1 Incluso):'
                         : 'Escolha 1 Opção (Incluso no Valor):');
 

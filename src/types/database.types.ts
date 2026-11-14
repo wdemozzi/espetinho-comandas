@@ -78,6 +78,10 @@ export interface Product {
   min_stock_alert?: number;
   addon_selection_mode?: 'single' | 'multiple' | 'hybrid'; // 'single' = cliente escolhe 1 opção inclusa; 'multiple' = livre; 'hybrid' = 1 sabor + extras
   addon_group_title?: string; // Título exibido (Ex: "Escolha o Espeto", "Escolha o Sabor")
+  is_promo?: boolean; // Se o produto está em promoção ativa
+  original_price_cents?: number; // Preço original de referência "De" (riscado)
+  promo_discount_percent?: number; // % OFF (ex: 20)
+  promo_tag?: string; // Selo em destaque (ex: "🔥 20% OFF", "⚡ OFERTA", "💥 PROMOÇÃO")
 }
 
 export interface RestaurantTable {

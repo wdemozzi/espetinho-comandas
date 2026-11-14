@@ -1267,6 +1267,10 @@ class DatabaseStore {
         addons: productData.addons || [],
         addon_selection_mode: productData.addon_selection_mode,
         addon_group_title: productData.addon_group_title,
+        is_promo: productData.is_promo ?? false,
+        original_price_cents: productData.original_price_cents,
+        promo_discount_percent: productData.promo_discount_percent,
+        promo_tag: productData.promo_tag,
       };
       this.products.unshift(newProduct);
     }
