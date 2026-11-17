@@ -1,4 +1,20 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+
+const storageMap = new Map<string, string>();
+const mockLocalStorage = {
+  getItem: (key: string) => storageMap.get(key) || null,
+  setItem: (key: string, val: string) => { storageMap.set(key, String(val)); },
+  removeItem: (key: string) => { storageMap.delete(key); },
+  clear: () => { storageMap.clear(); },
+  get length() { return storageMap.size; },
+  key: (index: number) => Array.from(storageMap.keys())[index] || null,
+};
+
+if (typeof window === 'undefined') {
+  (globalThis as any).window = globalThis;
+  (globalThis as any).localStorage = mockLocalStorage;
+}
+
 import { db } from './databaseStore';
 
 describe('DatabaseStore & Persistence', () => {
@@ -335,6 +351,61 @@ describe('DatabaseStore & Persistence', () => {
     db.deleteProduct(created!.id);
     const afterDelete = db.getProducts().find((p) => p.id === created!.id);
     expect(afterDelete).toBeUndefined();
+  });
+
+  it('CRITICAL: nunca deve gerar erro de estrutura circular em JSON em nenhuma entidade', () => {
+    // Valida que tabelas e comandas podem ser serializadas para JSON sem qualquer exceção de loop circular
+    const tables = db.getTables();
+    expect(() => JSON.stringify(tables)).not.toThrow();
+
+    const tabs = db.getTabs();
+    expect(() => JSON.stringify(tabs)).not.toThrow();
+
+    const orders = db.getOrders();
+    expect(() => JSON.stringify(orders)).not.toThrow();
+  });
+
+  it('CRITICAL: nunca deve zerar comanda aberta após refresh simulado ou persistência', () => {
+    // Abre comanda na Mesa 10
+    const table10 = db.getTableById('t10')!;
+    const tab = db.openTab({
+      table_id: table10.id,
+      opened_by_user_id: 'u-anti-regression',
+      customer_name: 'Anti Reset Cliente',
+      customer_phone: '(44) 99999-0000',
+    });
+
+    const product = db.getProducts()[0];
+    const order = db.createOrder({
+      tab_id: tab.id,
+      origin: 'waiter',
+      order_type: 'dine_in',
+      items: [{ product_id: product.id, quantity: 2, addons: [] }],
+    });
+
+    expect(order.tab_id).toBe(tab.id);
+
+    // Valida estado atual
+    const tableAfterOrder = db.getTableById('t10')!;
+    expect(tableAfterOrder.status).toBe('ocupada');
+    expect(tableAfterOrder.active_tab?.id).toBe(tab.id);
+    expect(tableAfterOrder.active_tab?.orders?.length).toBe(1);
+    expect(tableAfterOrder.active_tab?.total_cents).toBeGreaterThan(0);
+
+    // Simula reload: lê do localStorage e verifica integridade
+    const storedTabsRaw = localStorage.getItem('ct_tabs');
+    expect(storedTabsRaw).toBeDefined();
+    const parsedTabs = JSON.parse(storedTabsRaw!);
+    const savedTab = parsedTabs.find((t: any) => t.id === tab.id);
+    expect(savedTab).toBeDefined();
+    expect(savedTab.status).toBe('open');
+    expect(savedTab.total_cents).toBeGreaterThan(0);
+
+    // Verifica backup de emergência
+    const backupTabsRaw = localStorage.getItem('ct_backup_tabs');
+    expect(backupTabsRaw).toBeDefined();
+    const parsedBackup = JSON.parse(backupTabsRaw!);
+    expect(parsedBackup.some((t: any) => t.id === tab.id)).toBe(true);
   });
 });
 

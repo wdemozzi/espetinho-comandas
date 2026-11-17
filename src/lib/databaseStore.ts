@@ -2606,7 +2606,10 @@ class DatabaseStore {
         }
       }
 
-      const storedTabs = localStorage.getItem('ct_tabs');
+      let storedTabs = localStorage.getItem('ct_tabs');
+      if (!storedTabs) {
+        storedTabs = localStorage.getItem('ct_backup_tabs');
+      }
       if (storedTabs) {
         const parsed = JSON.parse(storedTabs);
         if (Array.isArray(parsed)) {
@@ -2614,7 +2617,10 @@ class DatabaseStore {
         }
       }
 
-      const storedOrders = localStorage.getItem('ct_orders');
+      let storedOrders = localStorage.getItem('ct_orders');
+      if (!storedOrders) {
+        storedOrders = localStorage.getItem('ct_backup_orders');
+      }
       if (storedOrders) {
         const parsed = JSON.parse(storedOrders);
         if (Array.isArray(parsed)) {
@@ -2693,10 +2699,17 @@ class DatabaseStore {
       const cleanTables = this.tables.map((t) => sanitizeTable(t)!);
       const cleanTabs = this.tabs.map(sanitizeTab);
 
+      const serializedTabs = JSON.stringify(cleanTabs);
+      const serializedOrders = JSON.stringify(this.orders);
+      const serializedTables = JSON.stringify(cleanTables);
+
       localStorage.setItem('ct_profiles', JSON.stringify(this.profiles));
-      localStorage.setItem('ct_tables', JSON.stringify(cleanTables));
-      localStorage.setItem('ct_tabs', JSON.stringify(cleanTabs));
-      localStorage.setItem('ct_orders', JSON.stringify(this.orders));
+      localStorage.setItem('ct_tables', serializedTables);
+      localStorage.setItem('ct_tabs', serializedTabs);
+      // Secondary backup snapshot for disaster recovery
+      localStorage.setItem('ct_backup_tabs', serializedTabs);
+      localStorage.setItem('ct_backup_orders', serializedOrders);
+      localStorage.setItem('ct_orders', serializedOrders);
       localStorage.setItem('ct_products', JSON.stringify(this.products));
       localStorage.setItem('ct_categories', JSON.stringify(this.categories));
       localStorage.setItem('ct_establishment', JSON.stringify(this.establishment));
@@ -2705,7 +2718,7 @@ class DatabaseStore {
       localStorage.setItem('ct_cash_shifts', JSON.stringify(this.cashShifts));
       localStorage.setItem('ct_deleted_product_ids', JSON.stringify(Array.from(this.deletedProductIds)));
     } catch (e) {
-      console.warn('Erro ao salvar no localStorage:', e);
+      console.error('[CRITICAL DATABASE STORE ERROR]: Falha ao persistir dados no localStorage:', e);
     }
   }
 
