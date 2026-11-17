@@ -160,6 +160,7 @@ export interface Order {
   updated_at?: string;
   items: OrderItem[];
   table_number?: number;
+  tab_id?: string | null;
 }
 
 export interface BillSplit {

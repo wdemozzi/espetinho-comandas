@@ -2528,6 +2528,30 @@ const INITIAL_TABLES: RestaurantTable[] = [
 
 type Listener = () => void;
 
+export function sanitizeTable(table?: RestaurantTable | null): RestaurantTable | undefined {
+  if (!table) return undefined;
+  return {
+    id: table.id,
+    establishment_id: table.establishment_id,
+    table_number: table.table_number,
+    label: table.label,
+    capacity: table.capacity,
+    qr_token: table.qr_token,
+    status: table.status,
+    is_active: table.is_active,
+    linked_table_id: table.linked_table_id || null,
+    linked_table_label: table.linked_table_label || null,
+    created_at: table.created_at,
+  };
+}
+
+export function sanitizeTab(tab: Tab): Tab {
+  return {
+    ...tab,
+    table: sanitizeTable(tab.table),
+  };
+}
+
 class DatabaseStore {
   private establishment: Establishment = INITIAL_ESTABLISHMENT;
   private profiles: Profile[] = INITIAL_PROFILES;
@@ -2666,9 +2690,12 @@ class DatabaseStore {
   private persist() {
     if (typeof window === 'undefined') return;
     try {
+      const cleanTables = this.tables.map((t) => sanitizeTable(t)!);
+      const cleanTabs = this.tabs.map(sanitizeTab);
+
       localStorage.setItem('ct_profiles', JSON.stringify(this.profiles));
-      localStorage.setItem('ct_tables', JSON.stringify(this.tables));
-      localStorage.setItem('ct_tabs', JSON.stringify(this.tabs));
+      localStorage.setItem('ct_tables', JSON.stringify(cleanTables));
+      localStorage.setItem('ct_tabs', JSON.stringify(cleanTabs));
       localStorage.setItem('ct_orders', JSON.stringify(this.orders));
       localStorage.setItem('ct_products', JSON.stringify(this.products));
       localStorage.setItem('ct_categories', JSON.stringify(this.categories));
@@ -2871,6 +2898,7 @@ class DatabaseStore {
       id: tabId,
       establishment_id: this.establishment.id,
       table_id: table.id,
+      table: sanitizeTable(table),
       opened_by: 'u2',
       closed_by: null,
       customer_name: 'Família Souza (6 pessoas)',
@@ -2890,7 +2918,6 @@ class DatabaseStore {
 
     this.orders.push(order);
     this.tabs.push(tab);
-    table.active_tab = tab;
     if (typeof window !== 'undefined') {
       localStorage.setItem('ct_demo_seeded', 'true');
     }
@@ -2965,26 +2992,66 @@ class DatabaseStore {
     return [...this.products];
   }
 
+  public getTabs(): Tab[] {
+    const allTables = this.tables;
+    return this.tabs.map((tab) => {
+      let table = allTables.find((tbl) => tbl.id === tab.table_id);
+      if (!table && tab.table_id) {
+        const num = parseInt(tab.table_id.replace(/\D/g, ''), 10);
+        if (!isNaN(num)) {
+          table = allTables.find((tbl) => tbl.table_number === num);
+        }
+      }
+      if (!table && tab.orders && tab.orders.length > 0) {
+        const orderTableNum = tab.orders.find((o) => o.table_number != null)?.table_number;
+        if (orderTableNum != null) {
+          table = allTables.find((tbl) => tbl.table_number === orderTableNum);
+        }
+      }
+
+      // Robust matching: by tab_id OR by order present in tab.orders OR table_number matching table within tab lifetime (if tab_id was not recorded)
+      const tabOrders = this.orders.filter((ord) => {
+        if (ord.tab_id) {
+          return ord.tab_id === tab.id || (tab.orders?.some((to) => to.id === ord.id) ?? false);
+        }
+        if (tab.orders?.some((to) => to.id === ord.id)) return true;
+        if (tab.table_id && ord.table_number != null && table && ord.table_number === table.table_number) {
+          return ord.created_at >= tab.opened_at && (!tab.closed_at || ord.created_at <= tab.closed_at);
+        }
+        return false;
+      });
+      const tabPayments = this.payments.filter((p) => p.tab_id === tab.id);
+      const tabSplits = this.splits.filter((s) => s.tab_id === tab.id);
+
+      const computedTotalCents = Math.max(
+        tab.total_cents || 0,
+        tabOrders.reduce((sum, o) => sum + (o.total_cents || 0), 0)
+      );
+
+      return {
+        ...tab,
+        table: sanitizeTable(table) || sanitizeTable(tab.table),
+        total_cents: computedTotalCents,
+        orders: tabOrders.length > 0 ? tabOrders : tab.orders || [],
+        payments: tabPayments,
+        splits: tabSplits,
+      };
+    });
+  }
+
   public getTables(): RestaurantTable[] {
+    const enrichedTabs = this.getTabs();
     return this.tables.map((table) => {
       // Direct open tab for this table
-      let active_tab = this.tabs.find((t) => t.table_id === table.id && t.status === 'open');
+      let active_tab = enrichedTabs.find((t) => t.table_id === table.id && t.status === 'open');
 
       // If table is joined to another table
       if (!active_tab && table.linked_table_id) {
-        active_tab = this.tabs.find((t) => t.table_id === table.linked_table_id && t.status === 'open');
+        active_tab = enrichedTabs.find((t) => t.table_id === table.linked_table_id && t.status === 'open');
       }
 
       const isOccupied = !!active_tab || !!table.linked_table_id;
       const status: TableStatus = isOccupied ? 'ocupada' : 'livre';
-
-      // Garantir que a comanda ativa carregue a referência da mesa
-      if (active_tab) {
-        active_tab = {
-          ...active_tab,
-          table: active_tab.table || table,
-        };
-      }
 
       return {
         ...table,
@@ -3032,40 +3099,6 @@ class DatabaseStore {
     }
 
     return undefined;
-  }
-
-  public getTabs(): Tab[] {
-    const allTables = this.getTables();
-    return this.tabs.map((tab) => {
-      let table = allTables.find((tbl) => tbl.id === tab.table_id);
-      if (!table && tab.table_id) {
-        const num = parseInt(tab.table_id.replace(/\D/g, ''), 10);
-        if (!isNaN(num)) {
-          table = allTables.find((tbl) => tbl.table_number === num);
-        }
-      }
-      if (!table && tab.orders && tab.orders.length > 0) {
-        const orderTableNum = tab.orders.find((o) => o.table_number != null)?.table_number;
-        if (orderTableNum != null) {
-          table = allTables.find((tbl) => tbl.table_number === orderTableNum);
-        }
-      }
-
-      const tabOrders = this.orders.filter((ord) => ord.items.some((item) => {
-        // Match orders associated with tab
-        return this.orders.some(o => o.id === ord.id);
-      }) && (tab.orders?.some(to => to.id === ord.id) ?? false));
-      const tabPayments = this.payments.filter((p) => p.tab_id === tab.id);
-      const tabSplits = this.splits.filter((s) => s.tab_id === tab.id);
-
-      return {
-        ...tab,
-        table: table || tab.table,
-        orders: tabOrders.length > 0 ? tabOrders : tab.orders || [],
-        payments: tabPayments,
-        splits: tabSplits,
-      };
-    });
   }
 
   public getTabById(id: string): Tab | undefined {
@@ -3271,11 +3304,13 @@ class DatabaseStore {
       }
     }
 
+    const cleanTable = sanitizeTable(table);
+
     const newTab: Tab = {
       id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       establishment_id: this.establishment.id,
       table_id: table ? table.id : null,
-      table: table || undefined,
+      table: cleanTable,
       opened_by: params.opened_by_user_id,
       closed_by: null,
       customer_name: params.customer_name || null,
@@ -3296,13 +3331,12 @@ class DatabaseStore {
     this.tabs.unshift(newTab);
     if (table) {
       table.status = 'ocupada';
-      table.active_tab = newTab;
     }
 
     this.persist();
     this.notify();
-    supabaseSync.broadcastTab(newTab);
-    supabaseSync.saveToCloud('tabs', this.tabs);
+    supabaseSync.broadcastTab(sanitizeTab(newTab));
+    supabaseSync.saveToCloud('tabs', this.tabs.map(sanitizeTab));
     return newTab;
   }
 
@@ -3371,14 +3405,13 @@ class DatabaseStore {
     // 3. Liberar a mesa de origem
     if (sourceTable) {
       sourceTable.status = 'livre';
-      sourceTable.active_tab = undefined;
     }
 
     // 4. Ocupar a mesa de destino
     targetTable.status = 'ocupada';
-    targetTable.active_tab = tab;
     targetTable.linked_table_id = null;
     targetTable.linked_table_label = null;
+    tab.table = sanitizeTable(targetTable);
 
     // 5. Se haviam mesas secundárias ligadas à mesa anterior, repassa o vínculo para a nova mesa
     this.tables.forEach((t) => {
@@ -3393,8 +3426,8 @@ class DatabaseStore {
     this.notify();
 
     // Sincronizar em tempo real com todos os dispositivos
-    supabaseSync.broadcastTab(tab);
-    supabaseSync.saveToCloud('tabs', this.tabs);
+    supabaseSync.broadcastTab(sanitizeTab(tab));
+    supabaseSync.saveToCloud('tabs', this.tabs.map(sanitizeTab));
     supabaseSync.saveToCloud('orders', this.orders);
 
     return {
@@ -3527,11 +3560,15 @@ class DatabaseStore {
     const sourceOrders = sourceTab.orders || [];
 
     for (const order of sourceOrders) {
-      // Atualiza table_number do pedido para a mesa de destino
+      // Atualiza table_number e tab_id do pedido para a comanda de destino
+      order.tab_id = targetTab.id;
       if (targetTable) {
         order.table_number = targetTable.table_number;
-        const globalOrder = this.orders.find((o) => o.id === order.id);
-        if (globalOrder) {
+      }
+      const globalOrder = this.orders.find((o) => o.id === order.id);
+      if (globalOrder) {
+        globalOrder.tab_id = targetTab.id;
+        if (targetTable) {
           globalOrder.table_number = targetTable.table_number;
         }
       }
@@ -3637,7 +3674,7 @@ class DatabaseStore {
       }
     }
 
-    const orderId = `order-${Date.now()}`;
+    const orderId = `order-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const orderNumber = this.nextOrderNumber++;
     let orderTotalCents = 0;
 
@@ -3697,6 +3734,18 @@ class DatabaseStore {
 
     const initialOrderStatus: OrderStatus = params.origin === 'external_catalog' ? 'pending_confirmation' : 'received';
 
+    // If not linked to a table tab, automatically create a Counter/Takeout tab so it appears at Cashier
+    let targetTabId = params.tab_id;
+    if (!targetTabId) {
+      const takeoutTab = this.openTab({
+        opened_by_user_id: 'online_takeout',
+        customer_name: `${params.customer_name || 'Cliente'} (Retirada Balcão)`,
+        customer_phone: params.customer_phone || undefined,
+        notes: `Pedido #${orderNumber} via Cardápio Online para Retirada no Balcão`,
+      });
+      targetTabId = takeoutTab.id;
+    }
+
     const newOrder: Order = {
       id: orderId,
       establishment_id: this.establishment.id,
@@ -3713,21 +3762,10 @@ class DatabaseStore {
       created_at: new Date().toISOString(),
       items: orderItems,
       table_number: tableNumber,
+      tab_id: targetTabId,
     };
 
     this.orders.unshift(newOrder);
-
-    // If not linked to a table tab, automatically create a Counter/Takeout tab so it appears at Cashier
-    let targetTabId = params.tab_id;
-    if (!targetTabId) {
-      const takeoutTab = this.openTab({
-        opened_by_user_id: 'online_takeout',
-        customer_name: `${params.customer_name || 'Cliente'} (Retirada Balcão)`,
-        customer_phone: params.customer_phone || undefined,
-        notes: `Pedido #${orderNumber} via Cardápio Online para Retirada no Balcão`,
-      });
-      targetTabId = takeoutTab.id;
-    }
 
     // Link order to tab and update total atomically
     let targetTab: Tab | undefined;
@@ -3737,6 +3775,7 @@ class DatabaseStore {
         if (!targetTab.orders) targetTab.orders = [];
         targetTab.orders.push(newOrder);
         targetTab.total_cents += orderTotalCents;
+        targetTab.updated_at = new Date().toISOString();
         if (!targetTab.customer_name && params.customer_name) {
           targetTab.customer_name = params.customer_name;
         }
@@ -3751,9 +3790,9 @@ class DatabaseStore {
     this.notify();
 
     // Broadcast in real-time to other devices (Kitchen KDS, Cashier, Waiter phones)
-    supabaseSync.broadcastOrder(newOrder, targetTab);
+    supabaseSync.broadcastOrder(newOrder, targetTab ? sanitizeTab(targetTab) : undefined);
     supabaseSync.saveToCloud('orders', this.orders);
-    supabaseSync.saveToCloud('tabs', this.tabs);
+    supabaseSync.saveToCloud('tabs', this.tabs.map(sanitizeTab));
     supabaseSync.saveToCloud('products', this.products);
 
     return newOrder;
@@ -4148,8 +4187,8 @@ class DatabaseStore {
     soundService.playSuccessDing();
     this.persist();
     this.notify();
-    supabaseSync.broadcastTab(tab);
-    supabaseSync.saveToCloud('tabs', this.tabs);
+    supabaseSync.broadcastTab(sanitizeTab(tab));
+    supabaseSync.saveToCloud('tabs', this.tabs.map(sanitizeTab));
     supabaseSync.saveToCloud('orders', this.orders);
     return tab;
   }

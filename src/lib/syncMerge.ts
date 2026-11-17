@@ -179,11 +179,26 @@ export function mergeTabs(baseTabs: Tab[], incomingTabs: Tab[]): Tab[] {
     // Se a comanda está paga, garante que paid_cents cubra total
     const paidCents = Math.max(existing.paid_cents || 0, inc.paid_cents || 0);
 
+    // Preserva consumo total e ordens: evita que uma comanda com consumo seja zerada por sincronização vazia/parcial
+    const totalCents = Math.max(existing.total_cents || 0, inc.total_cents || 0);
+    const discountCents = Math.max(existing.discount_cents || 0, inc.discount_cents || 0);
+
+    const existingOrders = existing.orders || [];
+    const incomingOrders = inc.orders || [];
+    const mergedOrders = incomingOrders.length > 0 ? incomingOrders : existingOrders;
+
     map.set(inc.id, {
       ...existing,
       ...inc,
       status: finalStatus,
+      total_cents: totalCents,
+      discount_cents: discountCents,
       paid_cents: paidCents,
+      orders: mergedOrders,
+      customer_name: inc.customer_name || existing.customer_name,
+      customer_phone: inc.customer_phone || existing.customer_phone,
+      notes: inc.notes || existing.notes,
+      table_id: inc.table_id || existing.table_id,
       closed_at: closedAt,
       closed_by: closedBy,
       updated_at: new Date(

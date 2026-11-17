@@ -18,6 +18,28 @@ type SyncCallback = {
   }) => void;
 };
 
+function cleanTabPayload(tab?: Tab | null): Tab | undefined {
+  if (!tab) return undefined;
+  return {
+    ...tab,
+    table: tab.table
+      ? {
+          id: tab.table.id,
+          establishment_id: tab.table.establishment_id,
+          table_number: tab.table.table_number,
+          label: tab.table.label,
+          capacity: tab.table.capacity,
+          qr_token: tab.table.qr_token,
+          status: tab.table.status,
+          is_active: tab.table.is_active,
+          linked_table_id: tab.table.linked_table_id || null,
+          linked_table_label: tab.table.linked_table_label || null,
+          created_at: tab.table.created_at,
+        }
+      : undefined,
+  };
+}
+
 export interface SyncStatus {
   isConfigured: boolean;
   isConnected: boolean;
@@ -197,7 +219,7 @@ class SupabaseSyncService {
       this.channel.send({
         type: 'broadcast',
         event: 'order_created',
-        payload: { order, tab },
+        payload: { order, tab: cleanTabPayload(tab) },
       });
       this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
     } catch {
@@ -252,7 +274,7 @@ class SupabaseSyncService {
       this.channel.send({
         type: 'broadcast',
         event: 'tab_updated',
-        payload: { tab },
+        payload: { tab: cleanTabPayload(tab) },
       });
     } catch {
       // Ignore network errors
@@ -292,6 +314,11 @@ class SupabaseSyncService {
         } catch {
           // Fallback to sending data directly if read fails
         }
+      }
+
+      // Ensure tabs have no circular references before sending to Supabase
+      if (id === 'tabs' && Array.isArray(finalData)) {
+        finalData = (finalData as Tab[]).map((t) => cleanTabPayload(t)!);
       }
 
       const { error } = await client.from('ct_cloud_sync').upsert(
