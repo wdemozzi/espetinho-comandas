@@ -2404,114 +2404,8 @@ const INITIAL_PRODUCTS: Product[] = [
         "addon_type": "multiple"
       }
     ]
-  },
-  {
-    "id": "p-combo-3-marmitas-m",
-    "establishment_id": "a0000000-0000-0000-0000-000000000001",
-    "category_id": "b-marmitaria",
-    "name": "Combo com Três Marmitas M",
-    "description": "Super economia para a família ou almoço na empresa! 3 Marmitas tamanho M completas, feitas com carinho e ingredientes selecionados (De R$ 62,97 por R$ 54,90).",
-    "image_url": "/marmitaria-combos-tamanhos.jpg",
-    "price_cents": 5490,
-    "cost_price_cents": 2700,
-    "sector": "cozinha",
-    "is_available": true,
-    "allow_notes": true,
-    "stock_quantity": 30,
-    "track_stock": false,
-    "min_stock_alert": 3,
-    "is_promo": true,
-    "original_price_cents": 6297,
-    "promo_discount_percent": 13,
-    "promo_tag": "🔥 COMBO 3 MARMITAS",
-    "created_at": "2026-11-17T12:00:15.196Z"
-  },
-  {
-    "id": "p-combo-3-marmitas-p",
-    "establishment_id": "a0000000-0000-0000-0000-000000000001",
-    "category_id": "b-marmitaria",
-    "name": "Combo com Três Marmitas P",
-    "description": "Praticidade e economia para o seu almoço! 3 Marmitas tamanho P com o sabor inconfundível de comida de casa por apenas R$ 40,90 (De R$ 50,97 por R$ 40,90).",
-    "image_url": "/marmitaria-combos-tamanhos.jpg",
-    "price_cents": 4090,
-    "cost_price_cents": 2200,
-    "sector": "cozinha",
-    "is_available": true,
-    "allow_notes": true,
-    "stock_quantity": 30,
-    "track_stock": false,
-    "min_stock_alert": 3,
-    "is_promo": true,
-    "original_price_cents": 5097,
-    "promo_discount_percent": 20,
-    "promo_tag": "🔥 COMBO 3 MARMITAS",
-    "created_at": "2026-11-17T12:00:15.196Z"
-  },
-  {
-    "id": "p-marmita-prato-do-dia",
-    "establishment_id": "a0000000-0000-0000-0000-000000000001",
-    "category_id": "b-marmitaria",
-    "name": "Prato do Dia - Bife a Cavalo",
-    "description": "O Prato do Dia especial da casa: Arroz branco soltinho, feijão caseiro temperado, bife a cavalo com ovo frito de gema perfeita, refogado de brócolis fresco e batata frita crocante.",
-    "image_url": "/marmitaria-prato-do-dia.jpg",
-    "price_cents": 2099,
-    "cost_price_cents": 950,
-    "sector": "cozinha",
-    "is_available": true,
-    "allow_notes": true,
-    "stock_quantity": 40,
-    "track_stock": false,
-    "min_stock_alert": 5,
-    "is_promo": true,
-    "promo_tag": "⭐ PRATO DO DIA",
-    "created_at": "2026-11-17T12:00:15.196Z",
-    "addons": [
-      {
-        "id": "pdd-1",
-        "product_id": "p-marmita-prato-do-dia",
-        "name": "Ovo Frito Adicional (+R$ 3,00)",
-        "price_cents": 300,
-        "is_available": true,
-        "sort_order": 1
-      },
-      {
-        "id": "pdd-2",
-        "product_id": "p-marmita-prato-do-dia",
-        "name": "Batata Frita Extra (+R$ 5,00)",
-        "price_cents": 500,
-        "is_available": true,
-        "sort_order": 2
-      },
-      {
-        "id": "pdd-3",
-        "product_id": "p-marmita-prato-do-dia",
-        "name": "Brócolis Refogado Extra (+R$ 4,00)",
-        "price_cents": 400,
-        "is_available": true,
-        "sort_order": 3
-      }
-    ]
-  },
-  {
-    "id": "p-marmita-economica-10",
-    "establishment_id": "a0000000-0000-0000-0000-000000000001",
-    "category_id": "b-marmitaria",
-    "name": "Marmita Econômica (A partir de R$ 10,00)",
-    "description": "Marmita individual econômica com comida caseira feita com carinho: arroz branco soltinho, feijão caseiro temperado e carne do dia.",
-    "image_url": "/marmitaria-prato-do-dia.jpg",
-    "price_cents": 1000,
-    "cost_price_cents": 500,
-    "sector": "cozinha",
-    "is_available": true,
-    "allow_notes": true,
-    "stock_quantity": 35,
-    "track_stock": false,
-    "min_stock_alert": 5,
-    "is_promo": true,
-    "promo_tag": "⚡ A PARTIR DE R$ 10",
-    "created_at": "2026-11-17T12:00:15.196Z"
   }
-];;
+];
 
 const INITIAL_TABLES: RestaurantTable[] = [
   { id: 't1', establishment_id: INITIAL_ESTABLISHMENT.id, table_number: 1, label: 'Mesa 01', capacity: 4, qr_token: 'mesa-01-token', status: 'livre', is_active: true, created_at: new Date().toISOString() },
@@ -2566,7 +2460,12 @@ class DatabaseStore {
   private listeners: Set<Listener> = new Set();
   private orderReadyListeners: Set<(alert: OrderReadyAlertData) => void> = new Set();
   private nextOrderNumber: number = 101;
-  private deletedProductIds: Set<string> = new Set();
+  private deletedProductIds: Set<string> = new Set([
+    'p-combo-3-marmitas-m',
+    'p-combo-3-marmitas-p',
+    'p-marmita-prato-do-dia',
+    'p-marmita-economica-10',
+  ]);
 
   constructor() {
     this.loadFromStorage();
@@ -2585,7 +2484,7 @@ class DatabaseStore {
         try {
           const parsedDeleted = JSON.parse(storedDeleted);
           if (Array.isArray(parsedDeleted)) {
-            this.deletedProductIds = new Set(parsedDeleted);
+            parsedDeleted.forEach((id: string) => this.deletedProductIds.add(id));
           }
         } catch { }
       }
@@ -2791,11 +2690,15 @@ class DatabaseStore {
         if (data.tabs && data.tabs.length > 0) {
           this.tabs = mergeTabs(this.tabs, data.tabs);
         }
+        if (data.deleted_product_ids && Array.isArray(data.deleted_product_ids)) {
+          data.deleted_product_ids.forEach((id: string) => this.deletedProductIds.add(id));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ct_deleted_product_ids', JSON.stringify(Array.from(this.deletedProductIds)));
+          }
+          this.products = this.products.filter((p) => !this.deletedProductIds.has(p.id));
+        }
         if (data.products && data.products.length > 0) {
-          const validProducts = data.products.filter((p) => !this.deletedProductIds.has(p.id));
-          const existingIds = new Set(validProducts.map((p) => p.id));
-          const missingSeed = INITIAL_PRODUCTS.filter((ip) => !existingIds.has(ip.id) && !this.deletedProductIds.has(ip.id));
-          this.products = [...validProducts, ...missingSeed];
+          this.products = data.products.filter((p) => !this.deletedProductIds.has(p.id));
         }
         if (data.categories && data.categories.length > 0) {
           const existingIds = new Set(data.categories.map((c) => c.id));
@@ -3182,6 +3085,7 @@ class DatabaseStore {
     this.persist();
     this.notify();
     supabaseSync.saveToCloud('products', this.products);
+    supabaseSync.saveToCloud('deleted_product_ids', Array.from(this.deletedProductIds));
   }
 
   // --- ACTIONS: STOCK CONTROL ---
@@ -3806,7 +3710,6 @@ class DatabaseStore {
     supabaseSync.broadcastOrder(newOrder, targetTab ? sanitizeTab(targetTab) : undefined);
     supabaseSync.saveToCloud('orders', this.orders);
     supabaseSync.saveToCloud('tabs', this.tabs.map(sanitizeTab));
-    supabaseSync.saveToCloud('products', this.products);
 
     return newOrder;
   }

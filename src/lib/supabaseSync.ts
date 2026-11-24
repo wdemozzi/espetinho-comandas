@@ -15,6 +15,7 @@ type SyncCallback = {
     profiles?: Profile[];
     products?: Product[];
     categories?: Category[];
+    deleted_product_ids?: string[];
   }) => void;
 };
 
@@ -176,6 +177,8 @@ class SupabaseSyncService {
               this.callbacks?.onFullSyncReceived({ products: row.data as Product[] });
             } else if (row.id === 'categories' && Array.isArray(row.data)) {
               this.callbacks?.onFullSyncReceived({ categories: row.data as Category[] });
+            } else if (row.id === 'deleted_product_ids' && Array.isArray(row.data)) {
+              this.callbacks?.onFullSyncReceived({ deleted_product_ids: row.data as string[] });
             }
             this.lastSyncedAt = new Date().toLocaleTimeString('pt-BR');
           }
@@ -282,7 +285,7 @@ class SupabaseSyncService {
   }
 
   // --- CLOUD PERSISTENCE VIA ct_cloud_sync TABLE ---
-  public async saveToCloud(id: 'orders' | 'tabs' | 'profiles' | 'products' | 'categories', data: unknown) {
+  public async saveToCloud(id: 'orders' | 'tabs' | 'profiles' | 'products' | 'categories' | 'deleted_product_ids', data: unknown) {
     const client = getSupabaseClient();
     if (!client) return;
 
@@ -373,6 +376,7 @@ class SupabaseSyncService {
         profiles?: Profile[];
         products?: Product[];
         categories?: Category[];
+        deleted_product_ids?: string[];
       } = {};
 
       for (const row of data) {
@@ -386,6 +390,8 @@ class SupabaseSyncService {
           fullData.products = row.data as Product[];
         } else if (row.id === 'categories' && Array.isArray(row.data)) {
           fullData.categories = row.data as Category[];
+        } else if (row.id === 'deleted_product_ids' && Array.isArray(row.data)) {
+          fullData.deleted_product_ids = row.data as string[];
         }
       }
 
