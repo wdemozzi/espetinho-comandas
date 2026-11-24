@@ -303,6 +303,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       if (onOrderCompleted) {
         onOrderCompleted(order.id);
       }
+
+      // Abre imediatamente o WhatsApp com a mensagem da sacola pronta para envio (cliente só precisa apertar Enter/Enviar)
+      try {
+        const whatsappUrl = getOrderWhatsAppUrl(order);
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      } catch (e) {
+        console.warn('Bloqueador de popup ou falha ao abrir WhatsApp automaticamente:', e);
+      }
     } catch (err: unknown) {
       setErrorMessage((err as Error).message || 'Erro ao enviar pedido.');
     } finally {

@@ -311,6 +311,16 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       if (onOrderCompleted) {
         onOrderCompleted(order.id);
       }
+
+      // Se for pedido de retirada (balcão), abre imediatamente o WhatsApp com os dados da sacola
+      if (!table && order) {
+        try {
+          const whatsappUrl = getOrderWhatsAppUrl(order);
+          window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+        } catch (e) {
+          console.warn('Bloqueador de popup ou falha ao abrir WhatsApp automaticamente:', e);
+        }
+      }
     } catch (err: unknown) {
       setErrorMessage((err as Error).message || 'Erro ao enviar pedido.');
     } finally {
