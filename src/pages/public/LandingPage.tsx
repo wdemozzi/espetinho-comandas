@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { db } from '../../lib/databaseStore';
 import { Product, Category, Order } from '../../types/database.types';
 import { formatBRL } from '../../lib/currency';
+import { getOrderWhatsAppUrl } from '../../lib/whatsapp';
 import { SectorBadge } from '../../components/common/Badge';
 import { validateCustomerName, validateBrazilianMobilePhone, formatPhoneMask, validateTextNoProfanity } from '../../lib/validators';
 import {
@@ -1690,11 +1691,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </p>
             </div>
 
+            {/* Bag Items Summary */}
+            {submittedOrder.items && submittedOrder.items.length > 0 && (
+              <div className="max-h-48 overflow-y-auto rounded-2xl bg-charcoal-850 border border-gray-800 p-3 text-left text-xs space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-black uppercase text-gray-400 tracking-wider">
+                  <span>Itens na Sacola ({submittedOrder.items.length})</span>
+                  <span className="text-emerald-400 font-bold">{formatBRL(submittedOrder.total_cents)}</span>
+                </div>
+                <div className="space-y-1.5 divide-y divide-gray-800/60">
+                  {submittedOrder.items.map((item, idx) => (
+                    <div key={idx} className="pt-1.5 first:pt-0">
+                      <div className="flex justify-between items-start font-bold text-gray-200">
+                        <span>{item.quantity}x {item.product_name}</span>
+                        <span className="text-ember-400">{formatBRL(item.total_cents)}</span>
+                      </div>
+                      {item.addons_snapshot && item.addons_snapshot.length > 0 && (
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {item.addons_snapshot.map((a) => `${a.name}${a.price_cents > 0 ? ` (+${formatBRL(a.price_cents)})` : ''}`).join(', ')}
+                        </p>
+                      )}
+                      {item.notes && (
+                        <p className="text-[11px] text-amber-300/80 italic mt-0.5">Obs: {item.notes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Direct WhatsApp Button */}
             <a
-              href={`https://wa.me/5544999923965?text=${encodeURIComponent(
-                `Olá CT Conveniência! Acabei de fazer o Pedido #${submittedOrder.order_number} para retirada no balcão no nome de ${submittedOrder.customer_name}.\nTotal: ${formatBRL(submittedOrder.total_cents)}.\nGostaria de confirmar para vocês começarem a assar na churrasqueira!`
-              )}`}
+              href={getOrderWhatsAppUrl(submittedOrder)}
               target="_blank"
               rel="noreferrer"
               onClick={() => {

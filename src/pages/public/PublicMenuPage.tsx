@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../../lib/databaseStore';
-import { Product, RestaurantTable, Category } from '../../types/database.types';
+import { Product, RestaurantTable, Category, Order } from '../../types/database.types';
 import { formatBRL } from '../../lib/currency';
+import { getOrderWhatsAppUrl } from '../../lib/whatsapp';
 import { SectorBadge } from '../../components/common/Badge';
 import { validateCustomerName, validateBrazilianMobilePhone, formatPhoneMask, validateTextNoProfanity } from '../../lib/validators';
 import {
@@ -23,6 +24,7 @@ import {
   Share2,
   Copy,
   Check,
+  MessageCircle,
 } from 'lucide-react';
 
 interface PublicMenuPageProps {
@@ -73,6 +75,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
   const [generalNotes, setGeneralNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [orderSuccessId, setOrderSuccessId] = useState<string | null>(null);
+  const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedShareToast, setCopiedShareToast] = useState<boolean>(false);
 
@@ -300,6 +303,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
         })),
       });
 
+      setSubmittedOrder(order);
       setOrderSuccessId(order.id);
       setCart([]);
       setIsBagOpen(false);
@@ -1068,45 +1072,75 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
       )}
 
       {/* Order Success Confirmation Modal */}
-      {orderSuccessId && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-charcoal-900 border border-emerald-500/80 rounded-2xl p-6 text-center space-y-4 shadow-2xl my-auto">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-600/20 border border-emerald-500 flex items-center justify-center text-emerald-400 animate-bounce">
+      {(orderSuccessId || submittedOrder) && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-sm bg-charcoal-900 border border-emerald-500/80 rounded-2xl p-5 sm:p-6 text-center space-y-4 shadow-2xl my-auto">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-600/20 border border-emerald-500 flex items-center justify-center text-emerald-400">
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
             <div>
               <h3 className="text-xl font-black text-white">
-                {table ? 'Pedido Confirmado na Mesa!' : 'Pedido Registrado!'}
+                {table ? 'Pedido Confirmado na Mesa!' : `Pedido #${submittedOrder?.order_number || orderSuccessId} Registrado!`}
               </h3>
               <p className="text-xs text-gray-300 mt-1.5 leading-relaxed">
                 {table
                   ? 'Seu pedido foi enviado diretamente para a nossa cozinha e será entregue na sua mesa!'
-                  : 'Para iniciarmos o preparo dos seus espetinhos na brasa, confirme seu pedido pelo nosso WhatsApp abaixo:'}
+                  : 'Para iniciarmos o preparo dos seus espetinhos na brasa, confirme seu pedido pelo nosso WhatsApp com 1 clique abaixo:'}
               </p>
             </div>
 
-            <div className="p-3 rounded-xl bg-charcoal-800 border border-gray-700 text-xs space-y-1">
-              <p className="text-gray-400">Código do Pedido:</p>
-              <p className="font-mono text-sm font-bold text-ember-400">{orderSuccessId}</p>
-            </div>
+            {submittedOrder && submittedOrder.items && submittedOrder.items.length > 0 && (
+              <div className="max-h-48 overflow-y-auto rounded-xl bg-charcoal-800 border border-gray-700 p-3 text-left text-xs space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-black uppercase text-gray-400 tracking-wider">
+                  <span>Itens na Sacola ({submittedOrder.items.length})</span>
+                  <span className="text-emerald-400 font-bold">{formatBRL(submittedOrder.total_cents)}</span>
+                </div>
+                <div className="space-y-1.5 divide-y divide-gray-700/60">
+                  {submittedOrder.items.map((item, idx) => (
+                    <div key={idx} className="pt-1.5 first:pt-0">
+                      <div className="flex justify-between items-start font-bold text-gray-200">
+                        <span>{item.quantity}x {item.product_name}</span>
+                        <span className="text-ember-400">{formatBRL(item.total_cents)}</span>
+                      </div>
+                      {item.addons_snapshot && item.addons_snapshot.length > 0 && (
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {item.addons_snapshot.map((a) => `${a.name}${a.price_cents > 0 ? ` (+${formatBRL(a.price_cents)})` : ''}`).join(', ')}
+                        </p>
+                      )}
+                      {item.notes && (
+                        <p className="text-[11px] text-amber-300/80 italic mt-0.5">Obs: {item.notes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {!table && (
+            {!table && submittedOrder && (
               <a
-                href={`https://wa.me/5544999923965?text=${encodeURIComponent(
-                  `Olá CT Conveniência! Acabei de fazer o Pedido #${orderSuccessId} no nome de ${customerName}. Gostaria de confirmar para começarem a assar!`
-                )}`}
+                href={getOrderWhatsAppUrl(submittedOrder)}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40"
+                onClick={() => {
+                  setTimeout(() => {
+                    setSubmittedOrder(null);
+                    setOrderSuccessId(null);
+                  }, 1000);
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 group transform active:scale-95"
               >
+                <MessageCircle className="w-4 h-4" />
                 <span>Confirmar no WhatsApp (1 Clique)</span>
               </a>
             )}
 
             <button
               type="button"
-              onClick={() => setOrderSuccessId(null)}
+              onClick={() => {
+                setOrderSuccessId(null);
+                setSubmittedOrder(null);
+              }}
               className="w-full py-2.5 px-4 rounded-xl bg-charcoal-800 hover:bg-gray-700 text-gray-300 font-bold text-xs transition"
             >
               Concluir
