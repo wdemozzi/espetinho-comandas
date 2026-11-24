@@ -1029,7 +1029,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
                       type="tel"
                       required={!table}
                       maxLength={15}
-                      placeholder="(44) 99735-7463"
+                      placeholder="(44) 99992-3965"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(formatPhoneMask(e.target.value))}
                       className="w-full pl-9 pr-3 py-2 bg-charcoal-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-ember-500 font-mono"
@@ -1093,7 +1093,7 @@ export const PublicMenuPage: React.FC<PublicMenuPageProps> = ({
 
             {!table && (
               <a
-                href={`https://wa.me/5544997357463?text=${encodeURIComponent(
+                href={`https://wa.me/5544999923965?text=${encodeURIComponent(
                   `Olá CT Conveniência! Acabei de fazer o Pedido #${orderSuccessId} no nome de ${customerName}. Gostaria de confirmar para começarem a assar!`
                 )}`}
                 target="_blank"

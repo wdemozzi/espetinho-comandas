@@ -32,7 +32,7 @@ const INITIAL_ESTABLISHMENT: Establishment = {
   name: 'CT Conveniência',
   slug: 'ct-conveniencia',
   description: 'Conveniência completa, cervejas trincando, drinks, espetinhos nobres na brasa e porções.',
-  phone: '(44) 99735-7463',
+  phone: '(44) 99992-3965',
   address: 'Avenida Rio Grande do Norte, 4365 - Umuarama, PR',
   opening_hours: 'Todos os dias das 16h às 02h',
   logo_url: '/ct-logo.png',
@@ -2587,7 +2587,7 @@ class DatabaseStore {
           if (Array.isArray(parsedDeleted)) {
             this.deletedProductIds = new Set(parsedDeleted);
           }
-        } catch {}
+        } catch { }
       }
 
       const storedProfiles = localStorage.getItem('ct_profiles');
@@ -2660,7 +2660,7 @@ class DatabaseStore {
         if (parsed && parsed.name) {
           this.establishment = {
             ...parsed,
-            phone: '(44) 99735-7463',
+            phone: '(44) 99992-3965',
             address: 'Avenida Rio Grande do Norte, 4365 - Umuarama, PR',
             service_fee_enabled: parsed.service_fee_enabled ?? false,
             service_fee_percent: parsed.service_fee_percent ?? 10,
@@ -2948,7 +2948,7 @@ class DatabaseStore {
 
   public notifyOrderReady(alert: OrderReadyAlertData) {
     this.orderReadyListeners.forEach((fn) => {
-      try { fn(alert); } catch {}
+      try { fn(alert); } catch { }
     });
   }
 
